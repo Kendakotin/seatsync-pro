@@ -14,7 +14,531 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      accounts: {
+        Row: {
+          active_seats: number | null
+          approved_image_version: string | null
+          client_name: string
+          compliance_score: number | null
+          created_at: string
+          go_live_date: string | null
+          id: string
+          notes: string | null
+          program_name: string
+          required_hardware_specs: Json | null
+          required_software: Json | null
+          security_controls: Json | null
+          status: string | null
+          total_seats: number | null
+          updated_at: string
+        }
+        Insert: {
+          active_seats?: number | null
+          approved_image_version?: string | null
+          client_name: string
+          compliance_score?: number | null
+          created_at?: string
+          go_live_date?: string | null
+          id?: string
+          notes?: string | null
+          program_name: string
+          required_hardware_specs?: Json | null
+          required_software?: Json | null
+          security_controls?: Json | null
+          status?: string | null
+          total_seats?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active_seats?: number | null
+          approved_image_version?: string | null
+          client_name?: string
+          compliance_score?: number | null
+          created_at?: string
+          go_live_date?: string | null
+          id?: string
+          notes?: string | null
+          program_name?: string
+          required_hardware_specs?: Json | null
+          required_software?: Json | null
+          security_controls?: Json | null
+          status?: string | null
+          total_seats?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          performed_at: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          performed_at?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          performed_at?: string | null
+          performed_by?: string | null
+        }
+        Relationships: []
+      }
+      hardware_assets: {
+        Row: {
+          antivirus_status: string | null
+          asset_tag: string
+          asset_type: string
+          assigned_agent: string | null
+          assigned_seat_id: string | null
+          brand: string | null
+          created_at: string
+          encryption_status: boolean | null
+          floor: string | null
+          id: string
+          image_version: string | null
+          model: string | null
+          notes: string | null
+          purchase_cost: number | null
+          purchase_date: string | null
+          serial_number: string | null
+          site: string | null
+          specs: Json | null
+          status: string | null
+          updated_at: string
+          usb_policy_applied: boolean | null
+          warranty_expiry: string | null
+        }
+        Insert: {
+          antivirus_status?: string | null
+          asset_tag: string
+          asset_type?: string
+          assigned_agent?: string | null
+          assigned_seat_id?: string | null
+          brand?: string | null
+          created_at?: string
+          encryption_status?: boolean | null
+          floor?: string | null
+          id?: string
+          image_version?: string | null
+          model?: string | null
+          notes?: string | null
+          purchase_cost?: number | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          site?: string | null
+          specs?: Json | null
+          status?: string | null
+          updated_at?: string
+          usb_policy_applied?: boolean | null
+          warranty_expiry?: string | null
+        }
+        Update: {
+          antivirus_status?: string | null
+          asset_tag?: string
+          asset_type?: string
+          assigned_agent?: string | null
+          assigned_seat_id?: string | null
+          brand?: string | null
+          created_at?: string
+          encryption_status?: boolean | null
+          floor?: string | null
+          id?: string
+          image_version?: string | null
+          model?: string | null
+          notes?: string | null
+          purchase_cost?: number | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          site?: string | null
+          specs?: Json | null
+          status?: string | null
+          updated_at?: string
+          usb_policy_applied?: boolean | null
+          warranty_expiry?: string | null
+        }
+        Relationships: []
+      }
+      maintenance_records: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          description: string | null
+          downtime_minutes: number | null
+          id: string
+          issue_type: string
+          priority: string | null
+          repair_cost: number | null
+          reported_at: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          seat_id: string | null
+          status: string | null
+          technician: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          description?: string | null
+          downtime_minutes?: number | null
+          id?: string
+          issue_type: string
+          priority?: string | null
+          repair_cost?: number | null
+          reported_at?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          seat_id?: string | null
+          status?: string | null
+          technician?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          description?: string | null
+          downtime_minutes?: number | null
+          id?: string
+          issue_type?: string
+          priority?: string | null
+          repair_cost?: number | null
+          reported_at?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          seat_id?: string | null
+          status?: string | null
+          technician?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_records_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "hardware_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_records_seat_id_fkey"
+            columns: ["seat_id"]
+            isOneToOne: false
+            referencedRelation: "seats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      new_hires: {
+        Row: {
+          account_access_provisioned: boolean | null
+          account_id: string | null
+          assigned_seat_id: string | null
+          created_at: string
+          employee_id: string | null
+          employee_name: string
+          headset_issued: boolean | null
+          hire_date: string
+          id: string
+          notes: string | null
+          pc_imaged: boolean | null
+          software_installed: boolean | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_access_provisioned?: boolean | null
+          account_id?: string | null
+          assigned_seat_id?: string | null
+          created_at?: string
+          employee_id?: string | null
+          employee_name: string
+          headset_issued?: boolean | null
+          hire_date: string
+          id?: string
+          notes?: string | null
+          pc_imaged?: boolean | null
+          software_installed?: boolean | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_access_provisioned?: boolean | null
+          account_id?: string | null
+          assigned_seat_id?: string | null
+          created_at?: string
+          employee_id?: string | null
+          employee_name?: string
+          headset_issued?: boolean | null
+          hire_date?: string
+          id?: string
+          notes?: string | null
+          pc_imaged?: boolean | null
+          software_installed?: boolean | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "new_hires_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "new_hires_assigned_seat_id_fkey"
+            columns: ["assigned_seat_id"]
+            isOneToOne: false
+            referencedRelation: "seats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seats: {
+        Row: {
+          account_id: string | null
+          assigned_agent: string | null
+          created_at: string
+          floor: string | null
+          headset_id: string | null
+          id: string
+          monitor_id: string | null
+          network_port: string | null
+          pc_asset_id: string | null
+          phone_id: string | null
+          position: string | null
+          row: string | null
+          seat_id: string
+          shift: string | null
+          site: string | null
+          status: string | null
+          updated_at: string
+          vlan: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          assigned_agent?: string | null
+          created_at?: string
+          floor?: string | null
+          headset_id?: string | null
+          id?: string
+          monitor_id?: string | null
+          network_port?: string | null
+          pc_asset_id?: string | null
+          phone_id?: string | null
+          position?: string | null
+          row?: string | null
+          seat_id: string
+          shift?: string | null
+          site?: string | null
+          status?: string | null
+          updated_at?: string
+          vlan?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          assigned_agent?: string | null
+          created_at?: string
+          floor?: string | null
+          headset_id?: string | null
+          id?: string
+          monitor_id?: string | null
+          network_port?: string | null
+          pc_asset_id?: string | null
+          phone_id?: string | null
+          position?: string | null
+          row?: string | null
+          seat_id?: string
+          shift?: string | null
+          site?: string | null
+          status?: string | null
+          updated_at?: string
+          vlan?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seats_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seats_pc_asset_id_fkey"
+            columns: ["pc_asset_id"]
+            isOneToOne: false
+            referencedRelation: "hardware_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_incidents: {
+        Row: {
+          asset_id: string | null
+          assigned_to: string | null
+          created_at: string
+          description: string | null
+          id: string
+          incident_type: string
+          reported_at: string | null
+          reported_by: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          seat_id: string | null
+          severity: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          incident_type: string
+          reported_at?: string | null
+          reported_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          seat_id?: string | null
+          severity?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          incident_type?: string
+          reported_at?: string | null
+          reported_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          seat_id?: string | null
+          severity?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_incidents_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "hardware_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_incidents_seat_id_fkey"
+            columns: ["seat_id"]
+            isOneToOne: false
+            referencedRelation: "seats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Relationships: []
+      }
+      software_licenses: {
+        Row: {
+          account_id: string | null
+          compliance_status: string | null
+          cost_per_seat: number | null
+          created_at: string
+          expiry_date: string | null
+          id: string
+          is_client_provided: boolean | null
+          license_key: string | null
+          license_type: string | null
+          notes: string | null
+          software_name: string
+          total_seats: number | null
+          updated_at: string
+          used_seats: number | null
+          vendor: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          compliance_status?: string | null
+          cost_per_seat?: number | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          is_client_provided?: boolean | null
+          license_key?: string | null
+          license_type?: string | null
+          notes?: string | null
+          software_name: string
+          total_seats?: number | null
+          updated_at?: string
+          used_seats?: number | null
+          vendor?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          compliance_status?: string | null
+          cost_per_seat?: number | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          is_client_provided?: boolean | null
+          license_key?: string | null
+          license_type?: string | null
+          notes?: string | null
+          software_name?: string
+          total_seats?: number | null
+          updated_at?: string
+          used_seats?: number | null
+          vendor?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
