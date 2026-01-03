@@ -49,8 +49,8 @@ export function Sidebar() {
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="font-semibold text-foreground text-sm">BPO Assets</span>
-              <span className="text-[10px] text-muted-foreground">Inventory System</span>
+              <span className="font-semibold text-foreground text-sm">SZ IT Assets</span>
+              <span className="text-[10px] text-muted-foreground">Marjone Yecla, Sr. IT Custodian</span>
             </div>
           )}
         </div>
