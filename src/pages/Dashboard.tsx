@@ -4,7 +4,7 @@ import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { AccountsOverview } from '@/components/dashboard/AccountsOverview';
 import { NewHireReadiness } from '@/components/dashboard/NewHireReadiness';
 import { ShiftOverview } from '@/components/dashboard/ShiftOverview';
-import { kpiData, seats } from '@/lib/mockData';
+import { useDashboardKPIs, useRealtimeDashboard } from '@/hooks/useDashboardData';
 import {
   Monitor,
   Zap,
@@ -14,21 +14,40 @@ import {
   DollarSign,
   Clock,
   FileCheck,
+  RefreshCw,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
-  const statusCounts = seats.reduce((acc, seat) => {
-    acc[seat.status] = (acc[seat.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const kpiData = useDashboardKPIs();
+  const queryClient = useQueryClient();
+  
+  // Enable real-time subscriptions
+  useRealtimeDashboard();
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries();
+  };
 
   return (
     <MainLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl font-bold">Operations Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Real-time visibility for IT & Operations</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Operations Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Real-time visibility for IT & Operations</p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
         </div>
 
         {/* KPI Cards - Top Row */}
@@ -46,16 +65,16 @@ export default function Dashboard() {
             subtitle="Ready for hiring"
             icon={<Zap className="w-6 h-6 text-success" />}
             trend="up"
-            trendValue="+5 this week"
+            trendValue={`${kpiData.reservedSeats} reserved`}
             variant="success"
           />
           <StatCard
             title="Down Seats"
-            value={kpiData.downSeats}
+            value={kpiData.downSeats + kpiData.repairSeats}
             subtitle="Requires attention"
             icon={<AlertTriangle className="w-6 h-6 text-destructive" />}
             trend="down"
-            trendValue="-2 from yesterday"
+            trendValue={`${kpiData.repairSeats} in repair`}
             variant="danger"
           />
           <StatCard
@@ -64,7 +83,7 @@ export default function Dashboard() {
             subtitle="Seats in use"
             icon={<Percent className="w-6 h-6 text-primary" />}
             trend="up"
-            trendValue="+1.2% this month"
+            trendValue="Real-time"
             variant="primary"
           />
         </div>
@@ -91,16 +110,16 @@ export default function Dashboard() {
             subtitle="Per 100 seats/week"
             icon={<Clock className="w-6 h-6 text-warning" />}
             trend="down"
-            trendValue="-0.3h improvement"
+            trendValue="Calculated"
             variant="warning"
           />
           <StatCard
-            title="Cost per Seat"
-            value={`$${kpiData.costPerSeat}`}
-            subtitle="Monthly average"
+            title="License Compliance"
+            value={`${kpiData.licenseComplianceRate}%`}
+            subtitle="Software licenses"
             icon={<DollarSign className="w-6 h-6 text-primary" />}
             trend="neutral"
-            trendValue="On target"
+            trendValue="Monitored"
           />
         </div>
 

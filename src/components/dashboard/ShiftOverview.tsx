@@ -1,14 +1,27 @@
-import { seats } from '@/lib/mockData';
-import { Sun, Moon, Sunrise } from 'lucide-react';
+import { useSeats } from '@/hooks/useDashboardData';
+import { Sun, Moon, Sunrise, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function ShiftOverview() {
-  const shiftCounts = seats.reduce((acc, seat) => {
-    if (seat.status === 'active') {
-      acc[seat.shift] = (acc[seat.shift] || 0) + 1;
+  const { data: seats, isLoading } = useSeats();
+
+  if (isLoading) {
+    return (
+      <div className="glass-card p-5">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  const shiftCounts = seats?.reduce((acc, seat) => {
+    if (seat.status === 'Active') {
+      const shift = seat.shift?.toLowerCase() || 'day';
+      acc[shift] = (acc[shift] || 0) + 1;
     }
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>) || {};
 
   const shifts = [
     { name: 'Day', key: 'day', icon: Sun, color: 'text-warning', bgColor: 'bg-warning/20' },
