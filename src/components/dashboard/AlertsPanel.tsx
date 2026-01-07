@@ -1,5 +1,5 @@
-import { AlertTriangle, AlertCircle, Info, ExternalLink } from 'lucide-react';
-import { alerts } from '@/lib/mockData';
+import { AlertTriangle, AlertCircle, Info, ExternalLink, Loader2 } from 'lucide-react';
+import { useAlerts } from '@/hooks/useDashboardData';
 import { cn } from '@/lib/utils';
 
 const alertIcons = {
@@ -21,6 +21,8 @@ const alertIconStyles = {
 };
 
 export function AlertsPanel() {
+  const alerts = useAlerts();
+
   return (
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-4">
@@ -28,35 +30,42 @@ export function AlertsPanel() {
         <span className="text-xs text-muted-foreground">{alerts.length} total</span>
       </div>
       <div className="space-y-3">
-        {alerts.map((alert) => {
-          const Icon = alertIcons[alert.type];
-          return (
-            <div
-              key={alert.id}
-              className={cn(
-                'p-3 rounded-lg border-l-4 border border-border/50 cursor-pointer hover:border-border transition-colors animate-fade-in',
-                alertStyles[alert.type]
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <Icon className={cn('w-5 h-5 flex-shrink-0 mt-0.5', alertIconStyles[alert.type])} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-sm text-foreground">{alert.title}</p>
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">{alert.timestamp}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{alert.description}</p>
-                  {alert.seatId && (
-                    <div className="flex items-center gap-1 mt-2">
-                      <span className="text-[10px] font-mono text-primary">{alert.seatId}</span>
-                      <ExternalLink className="w-3 h-3 text-primary" />
+        {alerts.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Info className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No active alerts</p>
+          </div>
+        ) : (
+          alerts.map((alert) => {
+            const Icon = alertIcons[alert.type];
+            return (
+              <div
+                key={alert.id}
+                className={cn(
+                  'p-3 rounded-lg border-l-4 border border-border/50 cursor-pointer hover:border-border transition-colors animate-fade-in',
+                  alertStyles[alert.type]
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <Icon className={cn('w-5 h-5 flex-shrink-0 mt-0.5', alertIconStyles[alert.type])} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-sm text-foreground">{alert.title}</p>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">{alert.timestamp}</span>
                     </div>
-                  )}
+                    <p className="text-xs text-muted-foreground mt-0.5">{alert.description}</p>
+                    {alert.seatId && (
+                      <div className="flex items-center gap-1 mt-2">
+                        <span className="text-[10px] font-mono text-primary">{alert.seatId}</span>
+                        <ExternalLink className="w-3 h-3 text-primary" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
