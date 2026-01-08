@@ -1,16 +1,37 @@
-import { Bell, Search, User, Clock } from 'lucide-react';
+import { Bell, Search, User, Clock, LogOut, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { alerts } from '@/lib/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 export function Header() {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { user, userRole, signOut } = useAuth();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const criticalAlerts = alerts.filter(a => a.type === 'critical').length;
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
+  const email = user?.email || '';
+
+  const roleColors = {
+    admin: 'bg-primary/20 text-primary',
+    operator: 'bg-warning/20 text-warning',
+    viewer: 'bg-secondary text-muted-foreground',
+  };
 
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-xl flex items-center justify-between px-6">
@@ -40,21 +61,42 @@ export function Header() {
         {/* Notifications */}
         <button className="relative w-10 h-10 rounded-lg bg-secondary/50 hover:bg-secondary flex items-center justify-center transition-colors">
           <Bell className="w-5 h-5 text-muted-foreground" />
-          {criticalAlerts > 0 && (
-            <span className="alert-badge">{criticalAlerts}</span>
-          )}
         </button>
 
-        {/* User */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center">
-            <User className="w-5 h-5 text-primary" />
-          </div>
-          <div className="hidden lg:block">
-            <p className="text-sm font-medium">IT Admin</p>
-            <p className="text-xs text-muted-foreground">ILG Manila</p>
-          </div>
-        </div>
+        {/* User Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-3 hover:bg-secondary/50 p-2 rounded-lg transition-colors">
+              <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div className="hidden lg:block text-left">
+                <p className="text-sm font-medium">{displayName}</p>
+                <div className="flex items-center gap-2">
+                  {userRole && (
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${roleColors[userRole]}`}>
+                      {userRole}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground hidden lg:block" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{email}</p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
