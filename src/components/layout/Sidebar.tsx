@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Cpu,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,7 @@ const navItems = [
   { icon: Wrench, label: 'Maintenance', path: '/maintenance' },
   { icon: Shield, label: 'Security', path: '/security' },
   { icon: FileText, label: 'Reports', path: '/reports' },
+  { icon: Users, label: 'Users', path: '/users' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
