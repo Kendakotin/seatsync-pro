@@ -572,6 +572,36 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_schedules: {
+        Row: {
+          created_at: string
+          cron_expression: string
+          enabled: boolean
+          id: string
+          last_run_at: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cron_expression?: string
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cron_expression?: string
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
