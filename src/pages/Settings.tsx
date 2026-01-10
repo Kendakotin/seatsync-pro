@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SyncSchedulesTab } from '@/components/settings/SyncSchedulesTab';
 import {
   Settings as SettingsIcon,
   Building2,
@@ -17,6 +18,7 @@ import {
   Database,
   Users,
   Save,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -82,6 +84,10 @@ export default function Settings() {
             <TabsTrigger value="integrations" className="gap-2">
               <Database className="w-4 h-4" />
               Integrations
+            </TabsTrigger>
+            <TabsTrigger value="sync" className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Sync Schedules
             </TabsTrigger>
           </TabsList>
 
@@ -386,6 +392,10 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="sync">
+            <SyncSchedulesTab />
           </TabsContent>
         </Tabs>
       </div>
