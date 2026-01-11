@@ -112,21 +112,28 @@ export type Database = {
           assigned_agent: string | null
           assigned_seat_id: string | null
           brand: string | null
+          cpu: string | null
           created_at: string
+          disk_space_gb: number | null
+          disk_type: string | null
           encryption_status: boolean | null
           floor: string | null
           id: string
           image_version: string | null
+          last_user_login: string | null
+          logged_in_user: string | null
           model: string | null
           notes: string | null
           purchase_cost: number | null
           purchase_date: string | null
+          ram_gb: number | null
           serial_number: string | null
           site: string | null
           specs: Json | null
           status: string | null
           updated_at: string
           usb_policy_applied: boolean | null
+          user_profile_count: number | null
           warranty_expiry: string | null
         }
         Insert: {
@@ -136,21 +143,28 @@ export type Database = {
           assigned_agent?: string | null
           assigned_seat_id?: string | null
           brand?: string | null
+          cpu?: string | null
           created_at?: string
+          disk_space_gb?: number | null
+          disk_type?: string | null
           encryption_status?: boolean | null
           floor?: string | null
           id?: string
           image_version?: string | null
+          last_user_login?: string | null
+          logged_in_user?: string | null
           model?: string | null
           notes?: string | null
           purchase_cost?: number | null
           purchase_date?: string | null
+          ram_gb?: number | null
           serial_number?: string | null
           site?: string | null
           specs?: Json | null
           status?: string | null
           updated_at?: string
           usb_policy_applied?: boolean | null
+          user_profile_count?: number | null
           warranty_expiry?: string | null
         }
         Update: {
@@ -160,21 +174,28 @@ export type Database = {
           assigned_agent?: string | null
           assigned_seat_id?: string | null
           brand?: string | null
+          cpu?: string | null
           created_at?: string
+          disk_space_gb?: number | null
+          disk_type?: string | null
           encryption_status?: boolean | null
           floor?: string | null
           id?: string
           image_version?: string | null
+          last_user_login?: string | null
+          logged_in_user?: string | null
           model?: string | null
           notes?: string | null
           purchase_cost?: number | null
           purchase_date?: string | null
+          ram_gb?: number | null
           serial_number?: string | null
           site?: string | null
           specs?: Json | null
           status?: string | null
           updated_at?: string
           usb_policy_applied?: boolean | null
+          user_profile_count?: number | null
           warranty_expiry?: string | null
         }
         Relationships: []
