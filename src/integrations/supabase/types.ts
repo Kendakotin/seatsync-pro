@@ -118,6 +118,7 @@ export type Database = {
           disk_type: string | null
           encryption_status: boolean | null
           floor: string | null
+          hostname: string | null
           id: string
           image_version: string | null
           last_user_login: string | null
@@ -149,6 +150,7 @@ export type Database = {
           disk_type?: string | null
           encryption_status?: boolean | null
           floor?: string | null
+          hostname?: string | null
           id?: string
           image_version?: string | null
           last_user_login?: string | null
@@ -180,6 +182,7 @@ export type Database = {
           disk_type?: string | null
           encryption_status?: boolean | null
           floor?: string | null
+          hostname?: string | null
           id?: string
           image_version?: string | null
           last_user_login?: string | null

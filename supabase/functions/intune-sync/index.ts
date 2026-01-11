@@ -30,13 +30,23 @@ interface IntuneDevice {
   userPrincipalName: string;
   isEncrypted: boolean;
   azureADDeviceId: string;
-  // Hardware specs
+  // Hardware specs from hardwareInformation
+  hardwareInformation?: {
+    totalStorageSpace?: number;
+    freeStorageSpace?: number;
+    operatingSystemProductType?: number;
+  };
   physicalMemoryInBytes?: number;
   totalStorageSpaceInBytes?: number;
   freeStorageSpaceInBytes?: number;
   processorArchitecture?: string;
   // User activity
-  usersLoggedOn?: Array<{ userId: string; lastLogOnDateTime: string }>;
+  usersLoggedOn?: Array<{ 
+    userId: string; 
+    lastLogOnDateTime: string;
+    displayName?: string;
+    userPrincipalName?: string;
+  }>;
 }
 
 async function getAccessToken(): Promise<string> {
@@ -73,8 +83,8 @@ async function getAccessToken(): Promise<string> {
 async function getIntuneDevices(accessToken: string): Promise<IntuneDevice[]> {
   console.log('Fetching devices from Microsoft Intune...');
   
-  // Use beta endpoint with $select to get hardware details
-  const graphUrl = 'https://graph.microsoft.com/beta/deviceManagement/managedDevices?$select=id,deviceName,managedDeviceOwnerType,enrolledDateTime,lastSyncDateTime,operatingSystem,osVersion,complianceState,model,manufacturer,serialNumber,userDisplayName,userPrincipalName,isEncrypted,azureADDeviceId,physicalMemoryInBytes,totalStorageSpaceInBytes,freeStorageSpaceInBytes,processorArchitecture,usersLoggedOn';
+  // Use beta endpoint with $select to get hardware details including hardwareInformation
+  const graphUrl = 'https://graph.microsoft.com/beta/deviceManagement/managedDevices?$select=id,deviceName,managedDeviceOwnerType,enrolledDateTime,lastSyncDateTime,operatingSystem,osVersion,complianceState,model,manufacturer,serialNumber,userDisplayName,userPrincipalName,isEncrypted,azureADDeviceId,physicalMemoryInBytes,totalStorageSpaceInBytes,freeStorageSpaceInBytes,processorArchitecture,usersLoggedOn,hardwareInformation';
   
   const response = await fetch(graphUrl, {
     method: 'GET',
@@ -103,19 +113,42 @@ async function syncDevicesToDatabase(devices: IntuneDevice[], supabase: any): Pr
 
   for (const device of devices) {
     try {
-      // Convert bytes to GB
+      // Convert bytes to GB for RAM
       const ramGb = device.physicalMemoryInBytes 
         ? Math.round((device.physicalMemoryInBytes / (1024 * 1024 * 1024)) * 10) / 10 
         : null;
-      const diskSpaceGb = device.totalStorageSpaceInBytes 
-        ? Math.round((device.totalStorageSpaceInBytes / (1024 * 1024 * 1024)) * 10) / 10 
+      
+      // Get disk space - try totalStorageSpaceInBytes first, then hardwareInformation
+      const totalStorageBytes = device.totalStorageSpaceInBytes || device.hardwareInformation?.totalStorageSpace;
+      const freeStorageBytes = device.freeStorageSpaceInBytes || device.hardwareInformation?.freeStorageSpace;
+      const diskSpaceGb = totalStorageBytes 
+        ? Math.round((totalStorageBytes / (1024 * 1024 * 1024)) * 10) / 10 
+        : null;
+      const freeDiskGb = freeStorageBytes
+        ? Math.round((freeStorageBytes / (1024 * 1024 * 1024)) * 10) / 10
         : null;
 
-      // Get logged on users info
+      // Get logged on users info - prefer displayName or userPrincipalName over userId
       const usersLoggedOn = device.usersLoggedOn || [];
-      const currentUser = usersLoggedOn.length > 0 ? usersLoggedOn[0].userId : null;
-      const lastLoginTime = usersLoggedOn.length > 0 ? usersLoggedOn[0].lastLogOnDateTime : null;
+      let loggedInUserDisplay: string | null = null;
+      let lastLoginTime: string | null = null;
+      
+      if (usersLoggedOn.length > 0) {
+        const firstUser = usersLoggedOn[0];
+        // Prefer displayName, then userPrincipalName, then userId
+        loggedInUserDisplay = firstUser.displayName || firstUser.userPrincipalName || firstUser.userId || null;
+        lastLoginTime = firstUser.lastLogOnDateTime || null;
+      }
+      
+      // If no usersLoggedOn, use device's userDisplayName/userPrincipalName
+      if (!loggedInUserDisplay) {
+        loggedInUserDisplay = device.userDisplayName || device.userPrincipalName || null;
+      }
 
+      // Extract CPU info - processorArchitecture gives x64/ARM, but model often has better CPU info
+      // Check if model contains processor info, otherwise use processorArchitecture
+      let cpuInfo = device.processorArchitecture || null;
+      
       // Map Intune device to hardware_assets table structure
       const assetData = {
         asset_tag: `INTUNE-${device.id.substring(0, 8).toUpperCase()}`,
@@ -131,13 +164,15 @@ async function syncDevicesToDatabase(devices: IntuneDevice[], supabase: any): Pr
         assigned_agent: device.userDisplayName || null,
         antivirus_status: device.complianceState === 'compliant' ? 'Active' : 'Inactive',
         encryption_status: device.isEncrypted || false,
-        // New hardware spec columns
-        cpu: device.processorArchitecture || null,
+        // Hostname from deviceName
+        hostname: device.deviceName || null,
+        // Hardware spec columns
+        cpu: cpuInfo,
         ram_gb: ramGb,
         disk_type: 'SSD', // Intune doesn't provide disk type, default to SSD
         disk_space_gb: diskSpaceGb,
         last_user_login: lastLoginTime,
-        logged_in_user: currentUser,
+        logged_in_user: loggedInUserDisplay,
         user_profile_count: usersLoggedOn.length,
         notes: `Intune Device ID: ${device.id}\nAzure AD Device ID: ${device.azureADDeviceId || 'N/A'}\nLast Sync: ${device.lastSyncDateTime}\nUser: ${device.userPrincipalName || 'Unassigned'}`,
         specs: {
@@ -149,8 +184,10 @@ async function syncDevicesToDatabase(devices: IntuneDevice[], supabase: any): Pr
           intune_id: device.id,
           azure_ad_device_id: device.azureADDeviceId,
           physical_memory_bytes: device.physicalMemoryInBytes,
-          total_storage_bytes: device.totalStorageSpaceInBytes,
-          free_storage_bytes: device.freeStorageSpaceInBytes,
+          total_storage_bytes: totalStorageBytes,
+          free_storage_bytes: freeStorageBytes,
+          free_disk_gb: freeDiskGb,
+          hostname: device.deviceName,
         },
       };
 

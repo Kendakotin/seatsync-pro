@@ -53,6 +53,7 @@ type HardwareAsset = {
   image_version: string | null;
   notes: string | null;
   created_at: string;
+  hostname: string | null;
   cpu: string | null;
   ram_gb: number | null;
   disk_type: string | null;
@@ -60,6 +61,7 @@ type HardwareAsset = {
   last_user_login: string | null;
   logged_in_user: string | null;
   user_profile_count: number | null;
+  specs: Record<string, unknown> | null;
 };
 
 const statusColors: Record<string, string> = {
@@ -560,6 +562,7 @@ export default function Hardware() {
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border/50">
                 <TableHead className="table-header">Asset Tag</TableHead>
+                <TableHead className="table-header">Hostname</TableHead>
                 <TableHead className="table-header">Type</TableHead>
                 <TableHead className="table-header">Brand/Model</TableHead>
                 <TableHead className="table-header">Serial</TableHead>
@@ -577,20 +580,28 @@ export default function Hardware() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : filteredAssets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                     No hardware assets found. Add your first asset or sync from Intune.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAssets.map((asset) => (
+                filteredAssets.map((asset) => {
+                  // Get free disk from specs if available
+                  const specs = asset.specs as Record<string, unknown> | null;
+                  const freeDiskGb = specs?.free_disk_gb as number | undefined;
+                  
+                  return (
                   <TableRow key={asset.id} className="hover:bg-muted/30 border-border/30">
                     <TableCell className="font-mono text-sm font-medium">{asset.asset_tag}</TableCell>
+                    <TableCell className="text-sm">
+                      {asset.hostname || '-'}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getAssetIcon(asset.asset_type)}
@@ -611,7 +622,16 @@ export default function Hardware() {
                     </TableCell>
                     <TableCell className="text-xs">
                       {asset.disk_type && asset.disk_space_gb 
-                        ? `${asset.disk_type} ${asset.disk_space_gb}GB` 
+                        ? (
+                          <div>
+                            <span>{asset.disk_type} {asset.disk_space_gb}GB</span>
+                            {freeDiskGb !== undefined && (
+                              <span className="text-muted-foreground block">
+                                Free: {freeDiskGb}GB
+                              </span>
+                            )}
+                          </div>
+                        )
                         : asset.disk_space_gb 
                           ? `${asset.disk_space_gb}GB` 
                           : '-'}
@@ -621,7 +641,7 @@ export default function Hardware() {
                         {asset.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm max-w-[150px] truncate" title={asset.logged_in_user || ''}>
                       {asset.logged_in_user || '-'}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -676,7 +696,8 @@ export default function Hardware() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
