@@ -53,6 +53,13 @@ type HardwareAsset = {
   image_version: string | null;
   notes: string | null;
   created_at: string;
+  cpu: string | null;
+  ram_gb: number | null;
+  disk_type: string | null;
+  disk_space_gb: number | null;
+  last_user_login: string | null;
+  logged_in_user: string | null;
+  user_profile_count: number | null;
 };
 
 const statusColors: Record<string, string> = {
@@ -556,9 +563,13 @@ export default function Hardware() {
                 <TableHead className="table-header">Type</TableHead>
                 <TableHead className="table-header">Brand/Model</TableHead>
                 <TableHead className="table-header">Serial</TableHead>
+                <TableHead className="table-header">CPU</TableHead>
+                <TableHead className="table-header">RAM</TableHead>
+                <TableHead className="table-header">Disk</TableHead>
                 <TableHead className="table-header">Status</TableHead>
-                <TableHead className="table-header">Location</TableHead>
-                <TableHead className="table-header">Assigned To</TableHead>
+                <TableHead className="table-header">Logged In User</TableHead>
+                <TableHead className="table-header">Last Login</TableHead>
+                <TableHead className="table-header">Profiles</TableHead>
                 <TableHead className="table-header">Security</TableHead>
                 <TableHead className="table-header w-[100px]">Actions</TableHead>
               </TableRow>
@@ -566,13 +577,13 @@ export default function Hardware() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : filteredAssets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                     No hardware assets found. Add your first asset or sync from Intune.
                   </TableCell>
                 </TableRow>
@@ -592,15 +603,35 @@ export default function Hardware() {
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {asset.serial_number || '-'}
                     </TableCell>
+                    <TableCell className="text-xs max-w-[150px] truncate" title={asset.cpu || ''}>
+                      {asset.cpu || '-'}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {asset.ram_gb ? `${asset.ram_gb} GB` : '-'}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {asset.disk_type && asset.disk_space_gb 
+                        ? `${asset.disk_type} ${asset.disk_space_gb}GB` 
+                        : asset.disk_space_gb 
+                          ? `${asset.disk_space_gb}GB` 
+                          : '-'}
+                    </TableCell>
                     <TableCell>
                       <span className={`status-badge ${statusColors[asset.status || 'Available'] || 'status-buffer'}`}>
                         {asset.status}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {asset.site && asset.floor ? `${asset.site}, ${asset.floor}` : asset.site || '-'}
+                      {asset.logged_in_user || '-'}
                     </TableCell>
-                    <TableCell>{asset.assigned_agent || '-'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {asset.last_user_login 
+                        ? new Date(asset.last_user_login).toLocaleDateString()
+                        : '-'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {asset.user_profile_count ?? '-'}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         {asset.antivirus_status === 'Active' && (

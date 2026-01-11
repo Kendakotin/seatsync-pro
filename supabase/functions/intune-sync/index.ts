@@ -30,6 +30,13 @@ interface IntuneDevice {
   userPrincipalName: string;
   isEncrypted: boolean;
   azureADDeviceId: string;
+  // Hardware specs
+  physicalMemoryInBytes?: number;
+  totalStorageSpaceInBytes?: number;
+  freeStorageSpaceInBytes?: number;
+  processorArchitecture?: string;
+  // User activity
+  usersLoggedOn?: Array<{ userId: string; lastLogOnDateTime: string }>;
 }
 
 async function getAccessToken(): Promise<string> {
@@ -66,7 +73,8 @@ async function getAccessToken(): Promise<string> {
 async function getIntuneDevices(accessToken: string): Promise<IntuneDevice[]> {
   console.log('Fetching devices from Microsoft Intune...');
   
-  const graphUrl = 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices';
+  // Use beta endpoint with $select to get hardware details
+  const graphUrl = 'https://graph.microsoft.com/beta/deviceManagement/managedDevices?$select=id,deviceName,managedDeviceOwnerType,enrolledDateTime,lastSyncDateTime,operatingSystem,osVersion,complianceState,model,manufacturer,serialNumber,userDisplayName,userPrincipalName,isEncrypted,azureADDeviceId,physicalMemoryInBytes,totalStorageSpaceInBytes,freeStorageSpaceInBytes,processorArchitecture,usersLoggedOn';
   
   const response = await fetch(graphUrl, {
     method: 'GET',
@@ -95,6 +103,19 @@ async function syncDevicesToDatabase(devices: IntuneDevice[], supabase: any): Pr
 
   for (const device of devices) {
     try {
+      // Convert bytes to GB
+      const ramGb = device.physicalMemoryInBytes 
+        ? Math.round((device.physicalMemoryInBytes / (1024 * 1024 * 1024)) * 10) / 10 
+        : null;
+      const diskSpaceGb = device.totalStorageSpaceInBytes 
+        ? Math.round((device.totalStorageSpaceInBytes / (1024 * 1024 * 1024)) * 10) / 10 
+        : null;
+
+      // Get logged on users info
+      const usersLoggedOn = device.usersLoggedOn || [];
+      const currentUser = usersLoggedOn.length > 0 ? usersLoggedOn[0].userId : null;
+      const lastLoginTime = usersLoggedOn.length > 0 ? usersLoggedOn[0].lastLogOnDateTime : null;
+
       // Map Intune device to hardware_assets table structure
       const assetData = {
         asset_tag: `INTUNE-${device.id.substring(0, 8).toUpperCase()}`,
@@ -110,6 +131,14 @@ async function syncDevicesToDatabase(devices: IntuneDevice[], supabase: any): Pr
         assigned_agent: device.userDisplayName || null,
         antivirus_status: device.complianceState === 'compliant' ? 'Active' : 'Inactive',
         encryption_status: device.isEncrypted || false,
+        // New hardware spec columns
+        cpu: device.processorArchitecture || null,
+        ram_gb: ramGb,
+        disk_type: 'SSD', // Intune doesn't provide disk type, default to SSD
+        disk_space_gb: diskSpaceGb,
+        last_user_login: lastLoginTime,
+        logged_in_user: currentUser,
+        user_profile_count: usersLoggedOn.length,
         notes: `Intune Device ID: ${device.id}\nAzure AD Device ID: ${device.azureADDeviceId || 'N/A'}\nLast Sync: ${device.lastSyncDateTime}\nUser: ${device.userPrincipalName || 'Unassigned'}`,
         specs: {
           os: device.operatingSystem,
@@ -119,6 +148,9 @@ async function syncDevicesToDatabase(devices: IntuneDevice[], supabase: any): Pr
           compliance_state: device.complianceState,
           intune_id: device.id,
           azure_ad_device_id: device.azureADDeviceId,
+          physical_memory_bytes: device.physicalMemoryInBytes,
+          total_storage_bytes: device.totalStorageSpaceInBytes,
+          free_storage_bytes: device.freeStorageSpaceInBytes,
         },
       };
 
