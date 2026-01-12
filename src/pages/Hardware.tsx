@@ -591,16 +591,33 @@ export default function Hardware() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAssets.map((asset) => {
-                  // Get free disk from specs if available
+              filteredAssets.map((asset) => {
+                  // Get values from specs JSON as fallback for legacy data
                   const specs = asset.specs as Record<string, unknown> | null;
                   const freeDiskGb = specs?.free_disk_gb as number | undefined;
+                  
+                  // Fallback to specs for CPU and RAM if columns are null
+                  const cpuDisplay = asset.cpu || (specs?.cpu as string) || '-';
+                  const ramDisplay = asset.ram_gb 
+                    ? `${asset.ram_gb} GB` 
+                    : (specs?.ram as string) || '-';
+                  
+                  // Get disk info with fallback
+                  const diskType = asset.disk_type || 'SSD';
+                  const diskSpace = asset.disk_space_gb;
+                  const diskDisplay = specs?.storage as string;
+                  
+                  // Get logged in user - prefer logged_in_user column, then assigned_agent
+                  const loggedInUserDisplay = asset.logged_in_user || asset.assigned_agent || '-';
+                  
+                  // Get hostname - prefer hostname column, then from specs
+                  const hostnameDisplay = asset.hostname || (specs?.hostname as string) || '-';
                   
                   return (
                   <TableRow key={asset.id} className="hover:bg-muted/30 border-border/30">
                     <TableCell className="font-mono text-sm font-medium">{asset.asset_tag}</TableCell>
                     <TableCell className="text-sm">
-                      {asset.hostname || '-'}
+                      {hostnameDisplay}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -614,17 +631,17 @@ export default function Hardware() {
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {asset.serial_number || '-'}
                     </TableCell>
-                    <TableCell className="text-xs max-w-[150px] truncate" title={asset.cpu || ''}>
-                      {asset.cpu || '-'}
+                    <TableCell className="text-xs max-w-[150px] truncate" title={cpuDisplay}>
+                      {cpuDisplay}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {asset.ram_gb ? `${asset.ram_gb} GB` : '-'}
+                      {ramDisplay}
                     </TableCell>
                     <TableCell className="text-xs">
-                      {asset.disk_type && asset.disk_space_gb 
+                      {diskSpace 
                         ? (
                           <div>
-                            <span>{asset.disk_type} {asset.disk_space_gb}GB</span>
+                            <span>{diskType} {diskSpace}GB</span>
                             {freeDiskGb !== undefined && (
                               <span className="text-muted-foreground block">
                                 Free: {freeDiskGb}GB
@@ -632,8 +649,8 @@ export default function Hardware() {
                             )}
                           </div>
                         )
-                        : asset.disk_space_gb 
-                          ? `${asset.disk_space_gb}GB` 
+                        : diskDisplay 
+                          ? diskDisplay 
                           : '-'}
                     </TableCell>
                     <TableCell>
@@ -641,8 +658,8 @@ export default function Hardware() {
                         {asset.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm max-w-[150px] truncate" title={asset.logged_in_user || ''}>
-                      {asset.logged_in_user || '-'}
+                    <TableCell className="text-sm max-w-[150px] truncate" title={loggedInUserDisplay}>
+                      {loggedInUserDisplay}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {asset.last_user_login 
