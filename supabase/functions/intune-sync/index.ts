@@ -128,26 +128,21 @@ async function syncDevicesToDatabase(devices: IntuneDevice[], supabase: any): Pr
         ? Math.round((freeStorageBytes / (1024 * 1024 * 1024)) * 10) / 10
         : null;
 
-      // Get logged on users info - prefer displayName or userPrincipalName over userId
+      // Get logged on users info - prefer device's primary user (userDisplayName/userPrincipalName)
+      // as this represents the current assigned user, not just last logon
       const usersLoggedOn = device.usersLoggedOn || [];
-      let loggedInUserDisplay: string | null = null;
       let lastLoginTime: string | null = null;
       
-      if (usersLoggedOn.length > 0) {
-        const firstUser = usersLoggedOn[0];
-        // Prefer displayName, then userPrincipalName, then userId
-        loggedInUserDisplay = firstUser.displayName || firstUser.userPrincipalName || firstUser.userId || null;
-        lastLoginTime = firstUser.lastLogOnDateTime || null;
-      }
+      // Primary user from the device is the current user assigned to this device
+      const loggedInUserDisplay = device.userDisplayName || device.userPrincipalName || null;
       
-      // If no usersLoggedOn, use device's userDisplayName/userPrincipalName
-      if (!loggedInUserDisplay) {
-        loggedInUserDisplay = device.userDisplayName || device.userPrincipalName || null;
+      if (usersLoggedOn.length > 0) {
+        lastLoginTime = usersLoggedOn[0].lastLogOnDateTime || null;
       }
 
-      // Extract CPU info - processorArchitecture gives x64/ARM, but model often has better CPU info
-      // Check if model contains processor info, otherwise use processorArchitecture
-      let cpuInfo = device.processorArchitecture || null;
+      // Extract CPU info from processorArchitecture
+      // Note: Graph API doesn't provide detailed CPU model, only architecture (x64/ARM)
+      const cpuInfo = device.processorArchitecture || 'unknown';
       
       // Map Intune device to hardware_assets table structure
       const assetData = {
