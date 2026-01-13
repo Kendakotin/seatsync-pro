@@ -602,13 +602,23 @@ export default function Hardware() {
                   // Get values from specs JSON as fallback for legacy data
                   const specs = asset.specs as Record<string, unknown> | null;
                   const freeDiskGb = specs?.free_disk_gb as number | undefined;
-                  
-                  // Fallback to specs for CPU and RAM if columns are null
-                  const cpuDisplay = asset.cpu || (specs?.cpu as string) || '-';
-                  const ramDisplay = asset.ram_gb 
-                    ? `${asset.ram_gb} GB` 
-                    : (specs?.ram as string) || '-';
-                  
+
+                  // CPU: prefer column, else compute from Intune specs
+                  const cpuFromSpecs = formatCpu({
+                    rawCpu: specs?.cpu,
+                    processorArchitecture: specs?.processor_architecture,
+                    processorCount: specs?.processor_count,
+                    processorCoreCount: specs?.processor_core_count,
+                  });
+                  const cpuDisplay = asset.cpu || cpuFromSpecs || '-';
+
+                  // RAM: prefer column, else compute from Intune physical_memory_bytes
+                  const ramFromBytes = bytesToGb(specs?.physical_memory_bytes);
+                  const ramDisplay = asset.ram_gb
+                    ? `${asset.ram_gb} GB`
+                    : ramFromBytes
+                      ? `${formatGb(ramFromBytes)} GB`
+                      : (specs?.ram as string) || '-';
                   // Get disk info with fallback
                   const diskType = asset.disk_type || 'SSD';
                   const diskSpace = asset.disk_space_gb;

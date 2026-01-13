@@ -33,6 +33,7 @@ interface ManagedDevice {
   physicalMemoryInBytes?: number | null;
   totalStorageSpaceInBytes?: number | null;
   freeStorageSpaceInBytes?: number | null;
+  processorArchitecture?: number | string | null;
   isEncrypted?: boolean | null;
   azureADDeviceId?: string | null;
 }
@@ -106,6 +107,32 @@ function roundGb(gb: number): number {
   return Number.isInteger(rounded) ? rounded : rounded;
 }
 
+function normalizeArchitecture(arch: unknown): string | null {
+  if (arch === null || arch === undefined) return null;
+
+  if (typeof arch === 'number') {
+    switch (arch) {
+      case 0:
+        return null;
+      case 1:
+        return 'x86';
+      case 2:
+        return 'x64';
+      case 3:
+        return 'ARM';
+      case 4:
+        return 'ARM64';
+      default:
+        return `Arch(${arch})`;
+    }
+  }
+
+  const s = String(arch).trim();
+  if (!s) return null;
+  if (s.toLowerCase() === 'unknown') return null;
+  return s;
+}
+
 async function graphGet<T>(accessToken: string, url: string): Promise<T> {
   const response = await fetch(url, {
     method: 'GET',
@@ -154,32 +181,90 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+async function listWindowsManagedDevices(
+  accessToken: string,
+): Promise<
+  Map<
+    string,
+    Pick<
+      ManagedDevice,
+      'physicalMemoryInBytes' | 'processorArchitecture' | 'totalStorageSpaceInBytes' | 'freeStorageSpaceInBytes'
+    >
+  >
+> {
+  // OData cast: list only Windows devices so we can select windowsManagedDevice-only fields.
+  // Some tenants don't expose a dedicated /windowsManagedDevices collection.
+  let url = `${GRAPH_BASE}/deviceManagement/managedDevices/microsoft.graph.windowsManagedDevice?` +
+    `$select=id,physicalMemoryInBytes,processorArchitecture,totalStorageSpaceInBytes,freeStorageSpaceInBytes`;
+
+  const map = new Map<
+    string,
+    Pick<
+      ManagedDevice,
+      'physicalMemoryInBytes' | 'processorArchitecture' | 'totalStorageSpaceInBytes' | 'freeStorageSpaceInBytes'
+    >
+  >();
+
+  while (url) {
+    const data = await graphGet<{ value: any[]; '@odata.nextLink'?: string }>(accessToken, url);
+    for (const d of data.value || []) {
+      if (!d?.id) continue;
+      map.set(d.id, {
+        physicalMemoryInBytes: typeof d.physicalMemoryInBytes === 'number' ? d.physicalMemoryInBytes : null,
+        processorArchitecture: d.processorArchitecture ?? null,
+        totalStorageSpaceInBytes: typeof d.totalStorageSpaceInBytes === 'number' ? d.totalStorageSpaceInBytes : null,
+        freeStorageSpaceInBytes: typeof d.freeStorageSpaceInBytes === 'number' ? d.freeStorageSpaceInBytes : null,
+      });
+    }
+    url = data['@odata.nextLink'] || '';
+  }
+
+  return map;
+}
+
 async function listManagedDevices(accessToken: string): Promise<ManagedDevice[]> {
   console.log('Fetching devices from Microsoft Intune (managedDevices - beta endpoint)...');
+
+  // NOTE: Some useful hardware fields exist only on the derived windowsManagedDevice type.
+  // We fetch them via OData cast and merge by id.
+  let windowsExtras = new Map<
+    string,
+    Pick<
+      ManagedDevice,
+      'physicalMemoryInBytes' | 'processorArchitecture' | 'totalStorageSpaceInBytes' | 'freeStorageSpaceInBytes'
+    >
+  >();
+
+  try {
+    windowsExtras = await listWindowsManagedDevices(accessToken);
+  } catch (e) {
+    // If the tenant doesn't expose this, keep sync working (RAM/CPU may remain blank).
+    console.warn('Windows managed device endpoint not available; continuing without CPU/RAM enrichment.');
+  }
 
   let url = `${GRAPH_BASE}/deviceManagement/managedDevices?` +
     `$select=id,deviceName,serialNumber,operatingSystem,osVersion,lastSyncDateTime,` +
     `totalStorageSpaceInBytes,freeStorageSpaceInBytes,` +
     `userId,userDisplayName,userPrincipalName,` +
-    `manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType,` +
-    `hardwareInformation`;
+    `manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType`;
 
   const devices: ManagedDevice[] = [];
 
   // Handle paging via @odata.nextLink
   while (url) {
     const data = await graphGet<{ value: any[]; '@odata.nextLink'?: string }>(accessToken, url);
-    
-    // Map hardwareInformation fields to flat structure
+
     for (const d of data.value || []) {
-      const hw = d.hardwareInformation || {};
+      const win = d?.id ? windowsExtras.get(d.id) : undefined;
       devices.push({
         ...d,
-        physicalMemoryInBytes: hw.physicalMemoryInBytes ?? null,
-        totalStorageSpaceInBytes: d.totalStorageSpaceInBytes ?? hw.totalStorageSpace ?? null,
-        freeStorageSpaceInBytes: d.freeStorageSpaceInBytes ?? hw.freeStorageSpace ?? null,
+        physicalMemoryInBytes: win?.physicalMemoryInBytes ?? null,
+        processorArchitecture: win?.processorArchitecture ?? null,
+        totalStorageSpaceInBytes: d.totalStorageSpaceInBytes ?? win?.totalStorageSpaceInBytes ?? null,
+        freeStorageSpaceInBytes: d.freeStorageSpaceInBytes ?? win?.freeStorageSpaceInBytes ?? null,
       });
     }
+
     url = data['@odata.nextLink'] || '';
   }
 
@@ -192,23 +277,33 @@ async function getManagedDeviceDetail(accessToken: string, id: string): Promise<
     'id,deviceName,serialNumber,operatingSystem,osVersion,lastSyncDateTime,' +
     'totalStorageSpaceInBytes,freeStorageSpaceInBytes,' +
     'userId,userDisplayName,userPrincipalName,' +
-    'manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType,' +
-    'hardwareInformation';
+    'manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType';
 
   const url = `${GRAPH_BASE}/deviceManagement/managedDevices/${id}?$select=${select}`;
 
   try {
-    const d = await graphGet<any>(accessToken, url);
-    const hw = d.hardwareInformation || {};
-    
-    return {
-      ...d,
-      physicalMemoryInBytes: hw.physicalMemoryInBytes ?? null,
-      totalStorageSpaceInBytes: d.totalStorageSpaceInBytes ?? hw.totalStorageSpace ?? null,
-      freeStorageSpaceInBytes: d.freeStorageSpaceInBytes ?? hw.freeStorageSpace ?? null,
-    };
+    return await graphGet<ManagedDevice>(accessToken, url);
   } catch (e) {
     console.warn(`Failed to get device detail for ${id}:`, (e as Error).message);
+    throw e;
+  }
+}
+
+async function getWindowsManagedDeviceDetail(accessToken: string, id: string): Promise<ManagedDevice> {
+  const select =
+    'id,deviceName,serialNumber,operatingSystem,osVersion,lastSyncDateTime,' +
+    'totalStorageSpaceInBytes,freeStorageSpaceInBytes,' +
+    'userId,userDisplayName,userPrincipalName,' +
+    'manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType,' +
+    'physicalMemoryInBytes,processorArchitecture';
+
+  // OData cast on a single device.
+  const url = `${GRAPH_BASE}/deviceManagement/managedDevices/${id}/microsoft.graph.windowsManagedDevice?$select=${select}`;
+
+  try {
+    return await graphGet<ManagedDevice>(accessToken, url);
+  } catch (e) {
+    console.warn(`Failed to get windows device detail for ${id}:`, (e as Error).message);
     throw e;
   }
 }
@@ -242,6 +337,11 @@ function validateDevice(device: any): ManagedDevice | null {
   const totalStorageSpaceInBytes = sanitizeNumber(device.totalStorageSpaceInBytes, 0);
   const freeStorageSpaceInBytes = sanitizeNumber(device.freeStorageSpaceInBytes, 0);
 
+  const processorArchitecture =
+    typeof device?.processorArchitecture === 'number'
+      ? device.processorArchitecture
+      : sanitizeText(device?.processorArchitecture, 50);
+
   return {
     id,
     deviceName: sanitizeText(device.deviceName, 255),
@@ -260,6 +360,7 @@ function validateDevice(device: any): ManagedDevice | null {
     physicalMemoryInBytes,
     totalStorageSpaceInBytes,
     freeStorageSpaceInBytes,
+    processorArchitecture,
     isEncrypted: typeof device.isEncrypted === 'boolean' ? device.isEncrypted : null,
     azureADDeviceId: sanitizeText(device.azureADDeviceId, 100),
   };
@@ -289,15 +390,28 @@ async function syncDevicesToDatabase(
       }
 
       // Some tenants return incomplete hardware fields in the list call
+      const isWindows = (validatedDevice.operatingSystem || '').toLowerCase().includes('windows');
+
+      const needsWindowsDetail =
+        isWindows &&
+        (
+          validatedDevice.physicalMemoryInBytes === null ||
+          validatedDevice.physicalMemoryInBytes === 0 ||
+          validatedDevice.processorArchitecture === null ||
+          validatedDevice.processorArchitecture === undefined
+        );
+
       const needsDetail =
-        validatedDevice.physicalMemoryInBytes === null ||
-        validatedDevice.physicalMemoryInBytes === 0 ||
-        validatedDevice.totalStorageSpaceInBytes === null;
+        validatedDevice.totalStorageSpaceInBytes === null ||
+        (isWindows && (validatedDevice.physicalMemoryInBytes === null || validatedDevice.physicalMemoryInBytes === 0));
 
       let detail = validatedDevice;
-      if (needsDetail) {
+      if (needsDetail || needsWindowsDetail) {
         try {
-          const rawDetail = await getManagedDeviceDetail(accessToken, validatedDevice.id);
+          const rawDetail = needsWindowsDetail
+            ? await getWindowsManagedDeviceDetail(accessToken, validatedDevice.id)
+            : await getManagedDeviceDetail(accessToken, validatedDevice.id);
+
           const validated = validateDevice(rawDetail);
           if (validated) {
             detail = validated;
@@ -330,6 +444,8 @@ async function syncDevicesToDatabase(
       const diskGb = bytesToGb(detail.totalStorageSpaceInBytes);
       const freeDiskGb = bytesToGb(detail.freeStorageSpaceInBytes);
 
+      const cpuArch = normalizeArchitecture(detail.processorArchitecture);
+
       const assetData = {
         asset_tag: `INTUNE-${detail.id.substring(0, 8).toUpperCase()}`,
         asset_type: detail.operatingSystem?.toLowerCase().includes('windows')
@@ -353,7 +469,7 @@ async function syncDevicesToDatabase(
         antivirus_status: detail.complianceState === 'compliant' ? 'Active' : 'Inactive',
         encryption_status: !!detail.isEncrypted,
         hostname: sanitizeText(detail.deviceName, 255),
-        cpu: null,
+        cpu: cpuArch,
         ram_gb: ramGb ? Math.round(roundGb(ramGb)) : null,
         disk_type: 'SSD',
         disk_space_gb: diskGb ? roundGb(diskGb) : null,
@@ -371,7 +487,10 @@ async function syncDevicesToDatabase(
           os_version: sanitizeText(detail.osVersion, 50),
           last_sync: sanitizeText(detail.lastSyncDateTime, 50),
           enrolled_at: sanitizeText(detail.enrolledDateTime, 50),
+          processor_architecture: detail.processorArchitecture ?? null,
+          cpu: cpuArch,
           physical_memory_bytes: detail.physicalMemoryInBytes,
+          ram_gb: ramGb ? Math.round(roundGb(ramGb)) : null,
           total_storage_bytes: detail.totalStorageSpaceInBytes,
           free_storage_bytes: detail.freeStorageSpaceInBytes,
           free_disk_gb: freeDiskGb ? roundGb(freeDiskGb) : null,
