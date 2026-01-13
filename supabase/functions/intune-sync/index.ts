@@ -34,10 +34,7 @@ interface ManagedDevice {
   userDisplayName?: string | null;
   userPrincipalName?: string | null;
 
-  // Hardware (per requested mapping)
-  processorArchitecture?: number | string | null;
-  processorCount?: number | null;
-  processorCoreCount?: number | null;
+  // Hardware - extracted from hardwareInformation in beta endpoint
   physicalMemoryInBytes?: number | null;
   totalStorageSpaceInBytes?: number | null;
   freeStorageSpaceInBytes?: number | null;
@@ -52,7 +49,8 @@ interface GraphUser {
   userPrincipalName?: string | null;
 }
 
-const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
+// Use beta endpoint for hardware details (hardwareInformation is only in beta)
+const GRAPH_BASE = 'https://graph.microsoft.com/beta';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -77,41 +75,6 @@ function roundGb(gb: number): number {
   // Memory is almost always whole GB, disks often have decimals.
   const rounded = Math.round(gb * 10) / 10;
   return Number.isInteger(rounded) ? rounded : rounded;
-}
-
-function mapArchitecture(arch: ManagedDevice['processorArchitecture']): string | null {
-  // https://learn.microsoft.com/en-us/graph/api/resources/intune-devices-manageddevicearchitecture?view=graph-rest-beta
-  if (arch === null || arch === undefined) return null;
-
-  if (typeof arch === 'number') {
-    switch (arch) {
-      case 0:
-        return null;
-      case 1:
-        return 'x86';
-      case 2:
-        return 'x64';
-      case 3:
-        return 'ARM';
-      case 4:
-        return 'ARM64';
-      default:
-        return `Arch(${arch})`;
-    }
-  }
-
-  const s = String(arch).trim();
-  if (!s || s.toLowerCase() === 'unknown') return null;
-  return s;
-}
-
-function formatCpu(device: ManagedDevice): string | null {
-  const arch = mapArchitecture(device.processorArchitecture);
-  const parts: string[] = [];
-  if (arch) parts.push(arch);
-  if (device.processorCount && device.processorCount > 0) parts.push(`${device.processorCount} CPU`);
-  if (device.processorCoreCount && device.processorCoreCount > 0) parts.push(`${device.processorCoreCount} cores`);
-  return parts.length ? parts.join(' · ') : null;
 }
 
 async function graphGet<T>(accessToken: string, url: string): Promise<T> {
@@ -163,24 +126,36 @@ async function getAccessToken(): Promise<string> {
 }
 
 async function listManagedDevices(accessToken: string): Promise<ManagedDevice[]> {
-  console.log('Fetching devices from Microsoft Intune (managedDevices)...');
+  console.log('Fetching devices from Microsoft Intune (managedDevices - beta endpoint)...');
 
-  // REQUIRED FIX #1/#2: Use managedDevices and request the exact properties we map into our inventory.
-  // IMPORTANT: processorArchitecture is an enum where 0 = unknown (do NOT treat it as falsy and overwrite).
+  // IMPORTANT: processorArchitecture, processorCount, physicalMemoryInBytes are NOT
+  // direct properties on managedDevice. They exist inside hardwareInformation (beta only).
+  // We fetch hardwareInformation and extract the relevant fields.
   let url = `${GRAPH_BASE}/deviceManagement/managedDevices?` +
     `$select=id,deviceName,serialNumber,operatingSystem,osVersion,lastSyncDateTime,` +
-    `processorArchitecture,processorCount,processorCoreCount,physicalMemoryInBytes,` +
     `totalStorageSpaceInBytes,freeStorageSpaceInBytes,` +
     `userId,userDisplayName,userPrincipalName,` +
-    `manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType`;
+    `manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType,` +
+    `hardwareInformation`;
 
   const devices: ManagedDevice[] = [];
 
   // Handle paging via @odata.nextLink
-  // (Not the primary focus of this fix, but avoids silently missing devices.)
   while (url) {
-    const data = await graphGet<{ value: ManagedDevice[]; '@odata.nextLink'?: string }>(accessToken, url);
-    devices.push(...(data.value || []));
+    const data = await graphGet<{ value: any[]; '@odata.nextLink'?: string }>(accessToken, url);
+    
+    // Map hardwareInformation fields to flat structure
+    for (const d of data.value || []) {
+      const hw = d.hardwareInformation || {};
+      devices.push({
+        ...d,
+        // Extract RAM from hardwareInformation (physicalMemoryInBytes is there in beta)
+        physicalMemoryInBytes: hw.physicalMemoryInBytes ?? null,
+        // Use totalStorageSpaceInBytes from root or hardwareInformation
+        totalStorageSpaceInBytes: d.totalStorageSpaceInBytes ?? hw.totalStorageSpace ?? null,
+        freeStorageSpaceInBytes: d.freeStorageSpaceInBytes ?? hw.freeStorageSpace ?? null,
+      });
+    }
     url = data['@odata.nextLink'] || '';
   }
 
@@ -189,23 +164,29 @@ async function listManagedDevices(accessToken: string): Promise<ManagedDevice[]>
 }
 
 async function getManagedDeviceDetail(accessToken: string, id: string): Promise<ManagedDevice> {
-  // REQUIRED FIX #1: support /managedDevices/{id}?$expand=users, with safe fallback.
+  // Use beta endpoint with hardwareInformation
   const select =
     'id,deviceName,serialNumber,operatingSystem,osVersion,lastSyncDateTime,' +
-    'processorArchitecture,processorCount,processorCoreCount,physicalMemoryInBytes,' +
     'totalStorageSpaceInBytes,freeStorageSpaceInBytes,' +
     'userId,userDisplayName,userPrincipalName,' +
-    'manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType';
+    'manufacturer,model,complianceState,isEncrypted,azureADDeviceId,enrolledDateTime,managedDeviceOwnerType,' +
+    'hardwareInformation';
 
-  const withExpand = `${GRAPH_BASE}/deviceManagement/managedDevices/${id}?$select=${select}&$expand=users($select=id,displayName,userPrincipalName)`;
+  const url = `${GRAPH_BASE}/deviceManagement/managedDevices/${id}?$select=${select}`;
 
   try {
-    return await graphGet<ManagedDevice & { users?: GraphUser[] }>(accessToken, withExpand);
+    const d = await graphGet<any>(accessToken, url);
+    const hw = d.hardwareInformation || {};
+    
+    return {
+      ...d,
+      physicalMemoryInBytes: hw.physicalMemoryInBytes ?? null,
+      totalStorageSpaceInBytes: d.totalStorageSpaceInBytes ?? hw.totalStorageSpace ?? null,
+      freeStorageSpaceInBytes: d.freeStorageSpaceInBytes ?? hw.freeStorageSpace ?? null,
+    };
   } catch (e) {
-    // Some tenants/API versions don’t support $expand=users on managedDevices.
-    // We still comply with the required flow by resolving user details via /users/{id}.
-    const withoutExpand = `${GRAPH_BASE}/deviceManagement/managedDevices/${id}?$select=${select}`;
-    return await graphGet<ManagedDevice>(accessToken, withoutExpand);
+    console.warn(`Failed to get device detail for ${id}:`, (e as Error).message);
+    throw e;
   }
 }
 
@@ -216,8 +197,8 @@ async function getUserById(accessToken: string, userId: string): Promise<GraphUs
     const user = await graphGet<GraphUser>(accessToken, url);
     return user;
   } catch (e) {
-    // REQUIRED FIX #4 (permissions): Without User.Read.All / Directory.Read.All this can fail.
-    // We must not fall back to showing GUIDs; return null and let the UI show "No User Logged In".
+    // Without User.Read.All / Directory.Read.All this can fail.
+    // Return null and let the UI show "No User Logged In".
     console.warn(`Failed to resolve user ${userId}:`, (e as Error).message);
     return null;
   }
@@ -237,20 +218,18 @@ async function syncDevicesToDatabase(
 
   for (const device of devices) {
     try {
-      // Some tenants return incomplete hardware fields in the list call (e.g., memory=0).
+      // Some tenants return incomplete hardware fields in the list call.
       // If key fields are missing/empty, request per-device detail.
       const needsDetail =
         device.physicalMemoryInBytes === null ||
         device.physicalMemoryInBytes === undefined ||
         device.physicalMemoryInBytes === 0 ||
-        device.processorArchitecture === null ||
-        device.processorArchitecture === undefined ||
         device.totalStorageSpaceInBytes === null ||
         device.totalStorageSpaceInBytes === undefined;
 
       const detail = needsDetail ? await getManagedDeviceDetail(accessToken, device.id) : device;
 
-      // REQUIRED FIX #3: resolve managedDevices.userId -> /users/{userId} and display as Name + UPN.
+      // Resolve managedDevices.userId -> /users/{userId} and display as Name + UPN.
       let userDisplayName: string | null = null;
       let userPrincipalName: string | null = null;
 
@@ -268,12 +247,10 @@ async function syncDevicesToDatabase(
       userDisplayName = userDisplayName || sanitizeUserString(detail.userDisplayName);
       userPrincipalName = userPrincipalName || sanitizeUserString(detail.userPrincipalName);
 
-      // REQUIRED FIX #2: bytes -> GB
+      // Bytes -> GB conversion
       const ramGb = bytesToGb(detail.physicalMemoryInBytes);
       const diskGb = bytesToGb(detail.totalStorageSpaceInBytes);
       const freeDiskGb = bytesToGb(detail.freeStorageSpaceInBytes);
-
-      const cpuFormatted = formatCpu(detail);
 
       const assetData = {
         asset_tag: `INTUNE-${detail.id.substring(0, 8).toUpperCase()}`,
@@ -303,12 +280,12 @@ async function syncDevicesToDatabase(
 
         hostname: detail.deviceName || null,
 
-        cpu: cpuFormatted || 'unknown',
+        // CPU info is not reliably available from Intune Graph API
+        cpu: null,
         ram_gb: ramGb ? Math.round(roundGb(ramGb)) : null,
         disk_type: 'SSD',
         disk_space_gb: diskGb ? roundGb(diskGb) : null,
 
-        // We no longer use usersLoggedOn here to avoid showing GUIDs.
         last_user_login: null,
         user_profile_count: null,
 
@@ -326,10 +303,6 @@ async function syncDevicesToDatabase(
           os_version: detail.osVersion,
           last_sync: detail.lastSyncDateTime,
           enrolled_at: detail.enrolledDateTime,
-
-          processor_architecture: detail.processorArchitecture,
-          processor_count: detail.processorCount,
-          processor_core_count: detail.processorCoreCount,
 
           physical_memory_bytes: detail.physicalMemoryInBytes,
           total_storage_bytes: detail.totalStorageSpaceInBytes,
@@ -390,7 +363,7 @@ serve(async (req) => {
       );
     }
 
-    // Permissions note (REQUIRED FIX #4):
+    // Required permissions:
     // - DeviceManagementManagedDevices.Read.All
     // - Device.Read.All
     // - User.Read.All
