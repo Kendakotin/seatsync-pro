@@ -105,6 +105,7 @@ export default function Hardware() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [hardwareInfoFilter, setHardwareInfoFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -231,10 +232,25 @@ export default function Hardware() {
       asset.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.model?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.serial_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.assigned_agent?.toLowerCase().includes(searchQuery.toLowerCase());
+      asset.assigned_agent?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.hostname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.logged_in_user?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || asset.status === statusFilter;
     const matchesType = typeFilter === 'all' || asset.asset_type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    
+    // Hardware info filter
+    let matchesHardwareInfo = true;
+    if (hardwareInfoFilter === 'missing_cpu') {
+      matchesHardwareInfo = !asset.cpu;
+    } else if (hardwareInfoFilter === 'missing_ram') {
+      matchesHardwareInfo = !asset.ram_gb;
+    } else if (hardwareInfoFilter === 'missing_any') {
+      matchesHardwareInfo = !asset.cpu || !asset.ram_gb || !asset.disk_space_gb;
+    } else if (hardwareInfoFilter === 'has_all') {
+      matchesHardwareInfo = !!asset.cpu && !!asset.ram_gb && !!asset.disk_space_gb;
+    }
+    
+    return matchesSearch && matchesStatus && matchesType && matchesHardwareInfo;
   });
 
   const assetTypes = ['Workstation', 'Headset', 'Monitor', 'Thin Client', 'IP Phone', 'UPS', 'Switch', 'Mobile', 'Other'];
@@ -558,6 +574,18 @@ export default function Hardware() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={hardwareInfoFilter} onValueChange={setHardwareInfoFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Hardware Info" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Devices</SelectItem>
+              <SelectItem value="missing_any">Missing Any Info</SelectItem>
+              <SelectItem value="missing_cpu">Missing CPU</SelectItem>
+              <SelectItem value="missing_ram">Missing RAM</SelectItem>
+              <SelectItem value="has_all">Complete Info</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ['hardware_assets'] })}>
             <RefreshCw className="w-4 h-4" />
           </Button>
@@ -577,7 +605,7 @@ export default function Hardware() {
                 <TableHead className="table-header">RAM</TableHead>
                 <TableHead className="table-header">Disk</TableHead>
                 <TableHead className="table-header">Status</TableHead>
-                <TableHead className="table-header">Logged In User</TableHead>
+                <TableHead className="table-header">Primary User</TableHead>
                 <TableHead className="table-header">Last Login</TableHead>
                 <TableHead className="table-header">Profiles</TableHead>
                 <TableHead className="table-header">Security</TableHead>
@@ -624,8 +652,9 @@ export default function Hardware() {
                   const diskSpace = asset.disk_space_gb;
                   const diskDisplay = specs?.storage as string;
                   
-                  // Get logged in user - prefer logged_in_user column, then assigned_agent
-                  const loggedInUserDisplay = asset.logged_in_user || asset.assigned_agent || '-';
+                  // Get primary user - from Intune this is the assigned user, not the currently logged in user
+                  // Intune userPrincipalName is the primary assigned user, not real-time logged-in user
+                  const primaryUserDisplay = asset.logged_in_user || asset.assigned_agent || '-';
                   
                   // Get hostname - prefer hostname column, then from specs
                   const hostnameDisplay = asset.hostname || (specs?.hostname as string) || '-';
@@ -675,8 +704,8 @@ export default function Hardware() {
                         {asset.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm max-w-[150px] truncate" title={loggedInUserDisplay}>
-                      {loggedInUserDisplay}
+                    <TableCell className="text-sm max-w-[150px] truncate" title={primaryUserDisplay}>
+                      {primaryUserDisplay}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {asset.last_user_login 
