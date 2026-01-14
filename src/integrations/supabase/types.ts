@@ -371,6 +371,51 @@ export type Database = {
         }
         Relationships: []
       }
+      registered_devices: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          device_id: string
+          hostname: string | null
+          id: string
+          last_sync_at: string | null
+          notes: string | null
+          registration_key: string
+          status: string
+          sync_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          device_id: string
+          hostname?: string | null
+          id?: string
+          last_sync_at?: string | null
+          notes?: string | null
+          registration_key: string
+          status?: string
+          sync_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          device_id?: string
+          hostname?: string | null
+          id?: string
+          last_sync_at?: string | null
+          notes?: string | null
+          registration_key?: string
+          status?: string
+          sync_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       seats: {
         Row: {
           account_id: string | null
