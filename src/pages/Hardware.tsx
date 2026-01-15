@@ -37,8 +37,9 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, RefreshCw, Cloud, Loader2 } from 'lucide-react';
+import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, RefreshCw, Cloud, Loader2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 type HardwareAsset = {
   id: string;
@@ -111,6 +112,7 @@ export default function Hardware() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<HardwareAsset | null>(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [newAsset, setNewAsset] = useState(emptyAsset);
   const [editAsset, setEditAsset] = useState(emptyAsset);
@@ -736,6 +738,17 @@ export default function Hardware() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        {specs?.synced_via === 'device-agent' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary hover:text-primary"
+                            onClick={() => navigate(`/device-registrations?search=${encodeURIComponent(asset.asset_tag)}`)}
+                            title="View device registration"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
