@@ -44,7 +44,7 @@ const DeviceRegistrations = () => {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, device }: { id: string; status: string; device?: RegisteredDevice }) => {
       const { error } = await supabase
         .from("registered_devices")
         .update({
@@ -55,9 +55,39 @@ const DeviceRegistrations = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // When approving, create a placeholder hardware asset if it doesn't exist
+      if (status === "approved" && device) {
+        const { data: existingAsset } = await supabase
+          .from("hardware_assets")
+          .select("id")
+          .eq("asset_tag", device.device_id)
+          .maybeSingle();
+
+        if (!existingAsset) {
+          const { error: assetError } = await supabase
+            .from("hardware_assets")
+            .insert({
+              asset_tag: device.device_id,
+              asset_type: "Workstation",
+              hostname: device.hostname,
+              status: "Pending Sync",
+              specs: {
+                registered_at: device.created_at,
+                registration_key: device.registration_key,
+                synced_via: "device-agent",
+              },
+            });
+
+          if (assetError) {
+            console.error("Failed to create hardware asset:", assetError);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["registered-devices"] });
+      queryClient.invalidateQueries({ queryKey: ["hardware-assets"] });
       toast.success("Device status updated");
     },
     onError: (error) => {
@@ -266,7 +296,7 @@ const DeviceRegistrations = () => {
                                 <Button
                                   size="sm"
                                   variant="default"
-                                  onClick={() => updateStatus.mutate({ id: device.id, status: "approved" })}
+                                  onClick={() => updateStatus.mutate({ id: device.id, status: "approved", device })}
                                 >
                                   Approve
                                 </Button>
@@ -292,7 +322,7 @@ const DeviceRegistrations = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => updateStatus.mutate({ id: device.id, status: "approved" })}
+                                onClick={() => updateStatus.mutate({ id: device.id, status: "approved", device })}
                               >
                                 Re-approve
                               </Button>
