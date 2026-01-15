@@ -9,8 +9,24 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Clock, Search, Download, RefreshCw, Copy } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Search, Download, RefreshCw, Copy, Cpu, HardDrive } from "lucide-react";
 import { format } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatGb } from "@/lib/intuneInventoryFormat";
+
+interface HardwareAsset {
+  id: string;
+  asset_tag: string;
+  brand: string | null;
+  model: string | null;
+  cpu: string | null;
+  ram_gb: number | null;
+  disk_space_gb: number | null;
+  disk_type: string | null;
+  serial_number: string | null;
+  image_version: string | null;
+  specs: Record<string, unknown> | null;
+}
 
 interface RegisteredDevice {
   id: string;
@@ -24,6 +40,7 @@ interface RegisteredDevice {
   sync_count: number;
   notes: string | null;
   created_at: string;
+  hardware_asset?: HardwareAsset | null;
 }
 
 const DeviceRegistrations = () => {
@@ -52,6 +69,29 @@ const DeviceRegistrations = () => {
       return data as RegisteredDevice[];
     },
   });
+
+  // Fetch associated hardware assets
+  const { data: hardwareAssets } = useQuery({
+    queryKey: ["hardware-assets-for-devices", devices?.map(d => d.device_id)],
+    queryFn: async () => {
+      if (!devices || devices.length === 0) return [];
+      const deviceIds = devices.map(d => d.device_id);
+      const { data, error } = await supabase
+        .from("hardware_assets")
+        .select("id, asset_tag, brand, model, cpu, ram_gb, disk_space_gb, disk_type, serial_number, image_version, specs")
+        .in("asset_tag", deviceIds);
+
+      if (error) throw error;
+      return data as HardwareAsset[];
+    },
+    enabled: !!devices && devices.length > 0,
+  });
+
+  // Merge hardware assets with devices
+  const devicesWithHardware = devices?.map(device => ({
+    ...device,
+    hardware_asset: hardwareAssets?.find(a => a.asset_tag === device.device_id) || null,
+  }));
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status, device }: { id: string; status: string; device?: RegisteredDevice }) => {
@@ -105,7 +145,7 @@ const DeviceRegistrations = () => {
     },
   });
 
-  const filteredDevices = devices?.filter((device) => {
+  const filteredDevices = devicesWithHardware?.filter((device) => {
     const matchesSearch =
       device.device_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       device.hostname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -262,7 +302,8 @@ const DeviceRegistrations = () => {
                     <TableRow>
                       <TableHead>Device ID</TableHead>
                       <TableHead>Hostname</TableHead>
-                      <TableHead>Registration Key</TableHead>
+                      <TableHead>Hardware Info</TableHead>
+                      <TableHead>System Info</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Last Sync</TableHead>
                       <TableHead>Sync Count</TableHead>
@@ -271,76 +312,122 @@ const DeviceRegistrations = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredDevices?.map((device) => (
-                      <TableRow key={device.id}>
-                        <TableCell className="font-mono text-sm">{device.device_id}</TableCell>
-                        <TableCell>{device.hostname || "-"}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs bg-muted px-2 py-1 rounded">
-                              {device.registration_key.substring(0, 14)}...
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(device.registration_key)}
-                            >
-                              <Copy className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(device.status)}</TableCell>
-                        <TableCell>
-                          {device.last_sync_at
-                            ? format(new Date(device.last_sync_at), "MMM d, HH:mm")
-                            : "-"}
-                        </TableCell>
-                        <TableCell>{device.sync_count}</TableCell>
-                        <TableCell>
-                          {format(new Date(device.created_at), "MMM d, yyyy")}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {device.status === "pending" && (
-                              <>
+                    {filteredDevices?.map((device) => {
+                      const hw = device.hardware_asset;
+                      const hasHardwareInfo = hw && (hw.brand || hw.model || hw.serial_number);
+                      const hasSystemInfo = hw && (hw.cpu || hw.ram_gb || hw.disk_space_gb);
+                      
+                      return (
+                        <TableRow key={device.id}>
+                          <TableCell className="font-mono text-sm">{device.device_id}</TableCell>
+                          <TableCell>{device.hostname || "-"}</TableCell>
+                          <TableCell>
+                            {hasHardwareInfo ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-2 cursor-help">
+                                      <HardDrive className="w-4 h-4 text-muted-foreground" />
+                                      <span className="text-sm">
+                                        {[hw.brand, hw.model].filter(Boolean).join(" ") || "Unknown"}
+                                      </span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <div className="space-y-1 text-xs">
+                                      {hw.brand && <div><span className="text-muted-foreground">Brand:</span> {hw.brand}</div>}
+                                      {hw.model && <div><span className="text-muted-foreground">Model:</span> {hw.model}</div>}
+                                      {hw.serial_number && <div><span className="text-muted-foreground">Serial:</span> {hw.serial_number}</div>}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {hasSystemInfo ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-2 cursor-help">
+                                      <Cpu className="w-4 h-4 text-muted-foreground" />
+                                      <span className="text-sm">
+                                        {[
+                                          hw.ram_gb ? `${formatGb(hw.ram_gb)} GB` : null,
+                                          hw.disk_space_gb ? `${formatGb(hw.disk_space_gb)} GB ${hw.disk_type || ""}`.trim() : null,
+                                        ].filter(Boolean).join(" · ") || "Info available"}
+                                      </span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <div className="space-y-1 text-xs">
+                                      {hw.cpu && <div><span className="text-muted-foreground">CPU:</span> {hw.cpu}</div>}
+                                      {hw.ram_gb && <div><span className="text-muted-foreground">RAM:</span> {formatGb(hw.ram_gb)} GB</div>}
+                                      {hw.disk_space_gb && <div><span className="text-muted-foreground">Storage:</span> {formatGb(hw.disk_space_gb)} GB {hw.disk_type || ""}</div>}
+                                      {hw.image_version && <div><span className="text-muted-foreground">Image:</span> {hw.image_version}</div>}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(device.status)}</TableCell>
+                          <TableCell>
+                            {device.last_sync_at
+                              ? format(new Date(device.last_sync_at), "MMM d, HH:mm")
+                              : "-"}
+                          </TableCell>
+                          <TableCell>{device.sync_count}</TableCell>
+                          <TableCell>
+                            {format(new Date(device.created_at), "MMM d, yyyy")}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              {device.status === "pending" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateStatus.mutate({ id: device.id, status: "approved", device })}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => updateStatus.mutate({ id: device.id, status: "rejected" })}
+                                  >
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              {device.status === "approved" && (
                                 <Button
                                   size="sm"
-                                  variant="default"
+                                  variant="outline"
+                                  onClick={() => updateStatus.mutate({ id: device.id, status: "revoked" })}
+                                >
+                                  Revoke
+                                </Button>
+                              )}
+                              {(device.status === "rejected" || device.status === "revoked") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={() => updateStatus.mutate({ id: device.id, status: "approved", device })}
                                 >
-                                  Approve
+                                  Re-approve
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => updateStatus.mutate({ id: device.id, status: "rejected" })}
-                                >
-                                  Reject
-                                </Button>
-                              </>
-                            )}
-                            {device.status === "approved" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateStatus.mutate({ id: device.id, status: "revoked" })}
-                              >
-                                Revoke
-                              </Button>
-                            )}
-                            {(device.status === "rejected" || device.status === "revoked") && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateStatus.mutate({ id: device.id, status: "approved", device })}
-                              >
-                                Re-approve
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
