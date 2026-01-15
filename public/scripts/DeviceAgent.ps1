@@ -234,8 +234,7 @@ function Install-ScheduledTask {
         -Argument "-ExecutionPolicy Bypass -File `"$scriptPath`" -Sync"
     
     $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
-        -RepetitionInterval (New-TimeSpan -Hours 6) `
-        -RepetitionDuration ([TimeSpan]::MaxValue)
+        -RepetitionInterval (New-TimeSpan -Hours 6)
     
     $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest
     
