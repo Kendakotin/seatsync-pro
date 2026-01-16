@@ -1,24 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Camera, ScanBarcode, X, FlipHorizontal } from 'lucide-react';
+import { Camera, ScanBarcode, X, Check, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BarcodeScannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onScan: (result: string) => void;
+  bulkMode?: boolean;
+  onBulkScan?: (results: string[]) => void;
 }
 
-export function BarcodeScanner({ open, onOpenChange, onScan }: BarcodeScannerProps) {
+export function BarcodeScanner({ open, onOpenChange, onScan, bulkMode = false, onBulkScan }: BarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [lastScanned, setLastScanned] = useState<string>('');
+  const [scannedItems, setScannedItems] = useState<string[]>([]);
   const scannerContainerId = 'barcode-scanner-container';
 
   // Supported formats for all IT asset barcodes
@@ -100,10 +104,21 @@ export function BarcodeScanner({ open, onOpenChange, onScan }: BarcodeScannerPro
           // Prevent duplicate scans
           if (decodedText !== lastScanned) {
             setLastScanned(decodedText);
-            toast.success(`Scanned: ${decodedText}`);
-            onScan(decodedText);
-            // Optional: close after successful scan
-            // onOpenChange(false);
+            
+            if (bulkMode) {
+              // In bulk mode, add to list if not already present
+              setScannedItems((prev) => {
+                if (prev.includes(decodedText)) {
+                  toast.info(`Already scanned: ${decodedText}`);
+                  return prev;
+                }
+                toast.success(`Added: ${decodedText}`);
+                return [...prev, decodedText];
+              });
+            } else {
+              toast.success(`Scanned: ${decodedText}`);
+              onScan(decodedText);
+            }
           }
         },
         () => {
@@ -141,7 +156,24 @@ export function BarcodeScanner({ open, onOpenChange, onScan }: BarcodeScannerPro
   const handleClose = async () => {
     await stopScanner();
     setLastScanned('');
+    setScannedItems([]);
     onOpenChange(false);
+  };
+
+  const handleApplyBulk = async () => {
+    if (scannedItems.length > 0 && onBulkScan) {
+      onBulkScan(scannedItems);
+    }
+    await handleClose();
+  };
+
+  const handleRemoveItem = (item: string) => {
+    setScannedItems((prev) => prev.filter((i) => i !== item));
+  };
+
+  const handleClearAll = () => {
+    setScannedItems([]);
+    setLastScanned('');
   };
 
   const handleCameraChange = async (cameraId: string) => {
@@ -155,10 +187,12 @@ export function BarcodeScanner({ open, onOpenChange, onScan }: BarcodeScannerPro
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanBarcode className="w-5 h-5" />
-            Barcode Scanner
+            {bulkMode ? 'Bulk Barcode Scanner' : 'Barcode Scanner'}
           </DialogTitle>
           <DialogDescription>
-            Position the barcode within the frame. Supports all major barcode formats.
+            {bulkMode 
+              ? 'Scan multiple barcodes in sequence. Click "Apply" when done to filter all scanned assets.'
+              : 'Position the barcode within the frame. Supports all major barcode formats.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -189,7 +223,7 @@ export function BarcodeScanner({ open, onOpenChange, onScan }: BarcodeScannerPro
           <div className="relative rounded-lg overflow-hidden bg-muted">
             <div
               id={scannerContainerId}
-              className="w-full min-h-[300px]"
+              className="w-full min-h-[250px]"
               style={{ position: 'relative' }}
             />
             {!isScanning && (
@@ -202,8 +236,40 @@ export function BarcodeScanner({ open, onOpenChange, onScan }: BarcodeScannerPro
             )}
           </div>
 
-          {/* Last Scanned Result */}
-          {lastScanned && (
+          {/* Bulk Mode: Scanned Items List */}
+          {bulkMode && scannedItems.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">
+                  Scanned Items ({scannedItems.length})
+                </Label>
+                <Button variant="ghost" size="sm" onClick={handleClearAll} className="h-7 text-xs">
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  Clear All
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-lg border bg-muted/30">
+                {scannedItems.map((item, index) => (
+                  <Badge
+                    key={`${item}-${index}`}
+                    variant="secondary"
+                    className="flex items-center gap-1 pr-1"
+                  >
+                    <span className="font-mono text-xs">{item}</span>
+                    <button
+                      onClick={() => handleRemoveItem(item)}
+                      className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Single Mode: Last Scanned Result */}
+          {!bulkMode && lastScanned && (
             <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
               <p className="text-sm text-muted-foreground">Last scanned:</p>
               <p className="font-mono font-medium text-primary">{lastScanned}</p>
@@ -220,8 +286,14 @@ export function BarcodeScanner({ open, onOpenChange, onScan }: BarcodeScannerPro
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={handleClose}>
               <X className="w-4 h-4 mr-2" />
-              Close
+              {bulkMode ? 'Cancel' : 'Close'}
             </Button>
+            {bulkMode && (
+              <Button onClick={handleApplyBulk} disabled={scannedItems.length === 0}>
+                <Check className="w-4 h-4 mr-2" />
+                Apply ({scannedItems.length})
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
