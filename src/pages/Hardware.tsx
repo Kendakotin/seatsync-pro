@@ -111,6 +111,7 @@ export default function Hardware() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scannerTarget, setScannerTarget] = useState<'search' | 'newAsset' | 'editAsset'>('search');
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<HardwareAsset | null>(null);
   const queryClient = useQueryClient();
@@ -270,23 +271,32 @@ export default function Hardware() {
     }
   };
 
-  const AssetForm = ({ asset, setAsset, onSubmit, isLoading, submitLabel }: {
+  const AssetForm = ({ asset, setAsset, onSubmit, isLoading, submitLabel, onScanAssetTag }: {
     asset: typeof newAsset;
     setAsset: React.Dispatch<React.SetStateAction<typeof newAsset>>;
     onSubmit: () => void;
     isLoading: boolean;
     submitLabel: string;
+    onScanAssetTag?: () => void;
   }) => (
     <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="asset_tag">Asset Tag *</Label>
-          <Input
-            id="asset_tag"
-            value={asset.asset_tag}
-            onChange={(e) => setAsset({ ...asset, asset_tag: e.target.value })}
-            placeholder="SZ-WKS-001"
-          />
+          <div className="flex gap-2">
+            <Input
+              id="asset_tag"
+              value={asset.asset_tag}
+              onChange={(e) => setAsset({ ...asset, asset_tag: e.target.value })}
+              placeholder="SZ-WKS-001"
+              className="flex-1"
+            />
+            {onScanAssetTag && (
+              <Button type="button" variant="outline" size="icon" onClick={onScanAssetTag} title="Scan barcode">
+                <ScanBarcode className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="asset_type">Type *</Label>
@@ -494,7 +504,10 @@ export default function Hardware() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsScannerOpen(true)}>
+            <Button variant="outline" onClick={() => {
+              setScannerTarget('search');
+              setIsScannerOpen(true);
+            }}>
               <ScanBarcode className="w-4 h-4 mr-2" />
               Scan Barcode
             </Button>
@@ -523,6 +536,10 @@ export default function Hardware() {
                   onSubmit={() => createAsset.mutate(newAsset)}
                   isLoading={createAsset.isPending}
                   submitLabel="Add Asset"
+                  onScanAssetTag={() => {
+                    setScannerTarget('newAsset');
+                    setIsScannerOpen(true);
+                  }}
                 />
               </DialogContent>
             </Dialog>
@@ -533,7 +550,16 @@ export default function Hardware() {
         <BarcodeScanner
           open={isScannerOpen}
           onOpenChange={setIsScannerOpen}
-          onScan={(result) => setSearchQuery(result)}
+          onScan={(result) => {
+            if (scannerTarget === 'newAsset') {
+              setNewAsset((prev) => ({ ...prev, asset_tag: result }));
+            } else if (scannerTarget === 'editAsset') {
+              setEditAsset((prev) => ({ ...prev, asset_tag: result }));
+            } else {
+              setSearchQuery(result);
+            }
+            setIsScannerOpen(false);
+          }}
         />
 
         {/* Edit Dialog */}
