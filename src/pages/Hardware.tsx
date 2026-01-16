@@ -574,6 +574,10 @@ export default function Hardware() {
               onSubmit={() => selectedAsset && updateAsset.mutate({ id: selectedAsset.id, data: editAsset })}
               isLoading={updateAsset.isPending}
               submitLabel="Save Changes"
+              onScanAssetTag={() => {
+                setScannerTarget('editAsset');
+                setIsScannerOpen(true);
+              }}
             />
           </DialogContent>
         </Dialog>
