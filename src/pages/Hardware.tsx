@@ -37,7 +37,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, RefreshCw, Cloud, Loader2, ExternalLink } from 'lucide-react';
+import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, RefreshCw, Cloud, Loader2, ExternalLink, ScanBarcode } from 'lucide-react';
+import { BarcodeScanner } from '@/components/scanner/BarcodeScanner';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -109,6 +110,7 @@ export default function Hardware() {
   const [hardwareInfoFilter, setHardwareInfoFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<HardwareAsset | null>(null);
   const queryClient = useQueryClient();
@@ -492,6 +494,10 @@ export default function Hardware() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsScannerOpen(true)}>
+              <ScanBarcode className="w-4 h-4 mr-2" />
+              Scan Barcode
+            </Button>
             <Button variant="outline" onClick={syncIntune} disabled={isSyncing}>
               {isSyncing ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -522,6 +528,13 @@ export default function Hardware() {
             </Dialog>
           </div>
         </div>
+
+        {/* Barcode Scanner */}
+        <BarcodeScanner
+          open={isScannerOpen}
+          onOpenChange={setIsScannerOpen}
+          onScan={(result) => setSearchQuery(result)}
+        />
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
