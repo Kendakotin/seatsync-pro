@@ -111,7 +111,9 @@ export default function Hardware() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isBulkScannerOpen, setIsBulkScannerOpen] = useState(false);
   const [scannerTarget, setScannerTarget] = useState<'search' | 'newAsset' | 'editAsset'>('search');
+  const [bulkScannedTags, setBulkScannedTags] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<HardwareAsset | null>(null);
   const queryClient = useQueryClient();
@@ -232,14 +234,24 @@ export default function Hardware() {
   };
 
   const filteredAssets = assets.filter((asset) => {
-    const matchesSearch =
-      asset.asset_tag.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.model?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.serial_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.assigned_agent?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.hostname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.logged_in_user?.toLowerCase().includes(searchQuery.toLowerCase());
+    // If bulk scan filter is active, use exact matching on asset tags
+    let matchesSearch = true;
+    if (bulkScannedTags.length > 0) {
+      matchesSearch = bulkScannedTags.some(tag => 
+        asset.asset_tag.toLowerCase() === tag.toLowerCase() ||
+        asset.serial_number?.toLowerCase() === tag.toLowerCase()
+      );
+    } else if (searchQuery) {
+      matchesSearch =
+        asset.asset_tag.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.model?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.serial_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.assigned_agent?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.hostname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.logged_in_user?.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    
     const matchesStatus = statusFilter === 'all' || asset.status === statusFilter;
     const matchesType = typeFilter === 'all' || asset.asset_type === typeFilter;
     
@@ -509,7 +521,11 @@ export default function Hardware() {
               setIsScannerOpen(true);
             }}>
               <ScanBarcode className="w-4 h-4 mr-2" />
-              Scan Barcode
+              Scan
+            </Button>
+            <Button variant="outline" onClick={() => setIsBulkScannerOpen(true)}>
+              <ScanBarcode className="w-4 h-4 mr-2" />
+              Bulk Scan
             </Button>
             <Button variant="outline" onClick={syncIntune} disabled={isSyncing}>
               {isSyncing ? (
@@ -561,6 +577,38 @@ export default function Hardware() {
             setIsScannerOpen(false);
           }}
         />
+
+        {/* Bulk Barcode Scanner */}
+        <BarcodeScanner
+          open={isBulkScannerOpen}
+          onOpenChange={setIsBulkScannerOpen}
+          onScan={() => {}}
+          bulkMode={true}
+          onBulkScan={(results) => {
+            setBulkScannedTags(results);
+            // Join all scanned tags for search
+            setSearchQuery(results.join(' '));
+          }}
+        />
+
+        {/* Bulk Scan Filter Badge */}
+        {bulkScannedTags.length > 0 && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <span className="text-sm font-medium">Bulk scan filter active:</span>
+            <Badge variant="secondary">{bulkScannedTags.length} assets</Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setBulkScannedTags([]);
+                setSearchQuery('');
+              }}
+              className="ml-auto h-7"
+            >
+              Clear filter
+            </Button>
+          </div>
+        )}
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
