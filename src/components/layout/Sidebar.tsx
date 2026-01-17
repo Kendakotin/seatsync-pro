@@ -34,15 +34,30 @@ const navItems = [
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isMobile?: boolean;
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ isMobile = false, onNavigate }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+
+  // On mobile, always show expanded sidebar
+  const isCollapsed = isMobile ? false : collapsed;
+
+  const handleNavClick = () => {
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
 
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 z-50 flex flex-col',
-        collapsed ? 'w-16' : 'w-64'
+        'h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col',
+        isMobile ? 'w-full' : 'fixed left-0 top-0 h-screen z-50',
+        !isMobile && (isCollapsed ? 'w-16' : 'w-64')
       )}
     >
       {/* Logo */}
@@ -51,19 +66,21 @@ export function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
             <Cpu className="w-5 h-5 text-primary" />
           </div>
-          {!collapsed && (
+          {!isCollapsed && (
             <div className="flex flex-col">
               <span className="font-semibold text-foreground text-sm">SZ IT Assets</span>
               <span className="text-[10px] text-muted-foreground">Marjone Yecla, Sr. IT Custodian</span>
             </div>
           )}
         </div>
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-6 h-6 rounded-md hover:bg-sidebar-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="w-6 h-6 rounded-md hover:bg-sidebar-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -74,21 +91,22 @@ export function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={handleNavClick}
               className={cn(
                 'nav-item',
                 isActive && 'nav-item-active'
               )}
-              title={collapsed ? item.label : undefined}
+              title={isCollapsed ? item.label : undefined}
             >
               <item.icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'text-primary')} />
-              {!collapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span>{item.label}</span>}
             </NavLink>
           );
         })}
       </nav>
 
       {/* Footer */}
-      {!collapsed && (
+      {!isCollapsed && (
         <div className="p-4 border-t border-sidebar-border">
           <div className="glass-card p-3">
             <div className="flex items-center gap-2 mb-2">
