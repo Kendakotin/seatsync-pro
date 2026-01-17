@@ -127,17 +127,17 @@ export function SeatsTable() {
 
       {/* Table */}
       <div className="glass-card overflow-hidden">
-        <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full">
+        <div className="overflow-x-auto scrollbar-thin -mx-4 md:mx-0">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-border bg-secondary/30">
-                <th className="table-header text-left p-4">Seat ID</th>
-                <th className="table-header text-left p-4">Status</th>
-                <th className="table-header text-left p-4">Account / Program</th>
-                <th className="table-header text-left p-4">Agent</th>
-                <th className="table-header text-left p-4">Shift</th>
-                <th className="table-header text-left p-4">PC Asset</th>
-                <th className="table-header text-center p-4">Security</th>
+                <th className="table-header text-left p-2 md:p-4 sticky left-0 z-10 bg-secondary/95 backdrop-blur-sm after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">Seat ID</th>
+                <th className="table-header text-left p-2 md:p-4">Status</th>
+                <th className="table-header text-left p-2 md:p-4">Account / Program</th>
+                <th className="table-header text-left p-2 md:p-4 hidden md:table-cell">Agent</th>
+                <th className="table-header text-left p-2 md:p-4">Shift</th>
+                <th className="table-header text-left p-2 md:p-4 hidden lg:table-cell">PC Asset</th>
+                <th className="table-header text-center p-2 md:p-4">Security</th>
               </tr>
             </thead>
             <tbody>
@@ -147,24 +147,24 @@ export function SeatsTable() {
                   className="border-b border-border/50 hover:bg-secondary/20 transition-colors cursor-pointer animate-fade-in"
                   style={{ animationDelay: `${index * 20}ms` }}
                 >
-                  <td className="p-4">
+                  <td className="p-2 md:p-4 sticky left-0 z-10 bg-card/95 backdrop-blur-sm after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border/50">
                     <div className="flex items-center gap-2">
-                      <Monitor className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-mono text-sm text-primary">{seat.seatId}</span>
+                      <Monitor className="w-4 h-4 text-muted-foreground hidden md:block" />
+                      <span className="font-mono text-xs md:text-sm text-primary">{seat.seatId}</span>
                     </div>
                   </td>
-                  <td className="p-4">
-                    <span className={cn('status-badge', statusStyles[seat.status])}>
+                  <td className="p-2 md:p-4">
+                    <span className={cn('status-badge text-[10px] md:text-xs', statusStyles[seat.status])}>
                       {statusLabels[seat.status]}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-2 md:p-4">
                     <div>
-                      <p className="text-sm font-medium">{seat.account}</p>
-                      <p className="text-xs text-muted-foreground">{seat.program}</p>
+                      <p className="text-xs md:text-sm font-medium truncate max-w-[120px] md:max-w-none">{seat.account}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate max-w-[120px] md:max-w-none">{seat.program}</p>
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className="p-2 md:p-4 hidden md:table-cell">
                     {seat.agent ? (
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
@@ -176,9 +176,9 @@ export function SeatsTable() {
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="p-4">
+                  <td className="p-2 md:p-4">
                     <span className={cn(
-                      'text-xs px-2 py-1 rounded',
+                      'text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded',
                       seat.shift === 'day' && 'bg-warning/20 text-warning',
                       seat.shift === 'night' && 'bg-blue-500/20 text-blue-400',
                       seat.shift === 'graveyard' && 'bg-purple-500/20 text-purple-400'
@@ -186,23 +186,23 @@ export function SeatsTable() {
                       {shiftLabels[seat.shift]}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-2 md:p-4 hidden lg:table-cell">
                     <div>
                       <p className="font-mono text-xs">{seat.pcAssetTag}</p>
                       <p className="text-[10px] text-muted-foreground">{seat.imageVersion}</p>
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className="p-2 md:p-4">
                     <div className="flex items-center justify-center gap-1">
                       {seat.antivirusStatus ? (
-                        <Shield className="w-4 h-4 text-success" />
+                        <Shield className="w-3 h-3 md:w-4 md:h-4 text-success" />
                       ) : (
-                        <Shield className="w-4 h-4 text-destructive" />
+                        <Shield className="w-3 h-3 md:w-4 md:h-4 text-destructive" />
                       )}
                       {seat.encryptionStatus ? (
-                        <CheckCircle className="w-4 h-4 text-success" />
+                        <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-success" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-destructive" />
+                        <XCircle className="w-3 h-3 md:w-4 md:h-4 text-destructive" />
                       )}
                     </div>
                   </td>
@@ -211,15 +211,15 @@ export function SeatsTable() {
             </tbody>
           </table>
         </div>
-        <div className="p-4 border-t border-border bg-secondary/20 flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+        <div className="p-3 md:p-4 border-t border-border bg-secondary/20 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-xs md:text-sm text-muted-foreground">
             Showing {Math.min(20, filteredSeats.length)} of {filteredSeats.length} seats
           </p>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 rounded-md bg-secondary/50 text-sm hover:bg-secondary transition-colors">
+            <button className="px-2 md:px-3 py-1 md:py-1.5 rounded-md bg-secondary/50 text-xs md:text-sm hover:bg-secondary transition-colors">
               Previous
             </button>
-            <button className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors">
+            <button className="px-2 md:px-3 py-1 md:py-1.5 rounded-md bg-primary text-primary-foreground text-xs md:text-sm hover:bg-primary/90 transition-colors">
               Next
             </button>
           </div>

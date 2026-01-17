@@ -163,6 +163,15 @@
     @apply h-full rounded-full transition-all duration-500;
     background: var(--gradient-primary);
   }
+
+  /* Table with sticky first column on mobile */
+  .table-sticky-first {
+    @apply -mx-4 md:mx-0;
+  }
+  
+  .table-sticky-first table {
+    @apply min-w-[600px];
+  }
 }
 
 @layer utilities {
