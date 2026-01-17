@@ -33,19 +33,19 @@ export function ShiftOverview() {
 
   return (
     <div className="glass-card p-5">
-      <h3 className="font-semibold text-foreground mb-4">Active by Shift</h3>
-      <div className="grid grid-cols-3 gap-3">
+      <h3 className="font-semibold text-foreground mb-3 md:mb-4 text-sm md:text-base">Active by Shift</h3>
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
         {shifts.map((shift) => {
           const count = shiftCounts[shift.key] || 0;
           const percentage = totalActive > 0 ? ((count / totalActive) * 100).toFixed(0) : 0;
           return (
-            <div key={shift.key} className="text-center p-3 rounded-lg bg-secondary/30">
-              <div className={cn('w-10 h-10 rounded-xl mx-auto flex items-center justify-center mb-2', shift.bgColor)}>
-                <shift.icon className={cn('w-5 h-5', shift.color)} />
+            <div key={shift.key} className="text-center p-2 md:p-3 rounded-lg bg-secondary/30">
+              <div className={cn('w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl mx-auto flex items-center justify-center mb-1 md:mb-2', shift.bgColor)}>
+                <shift.icon className={cn('w-4 h-4 md:w-5 md:h-5', shift.color)} />
               </div>
-              <p className="text-2xl font-bold">{count}</p>
-              <p className="text-xs text-muted-foreground">{shift.name}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{percentage}%</p>
+              <p className="text-lg md:text-2xl font-bold">{count}</p>
+              <p className="text-[10px] md:text-xs text-muted-foreground">{shift.name}</p>
+              <p className="text-[9px] md:text-[10px] text-muted-foreground mt-0.5 md:mt-1">{percentage}%</p>
             </div>
           );
         })}

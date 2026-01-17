@@ -32,18 +32,18 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {/* Page Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Operations Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Real-time visibility for IT & Operations</p>
+            <h1 className="text-xl md:text-2xl font-bold">Operations Dashboard</h1>
+            <p className="text-muted-foreground text-sm md:text-base mt-1">Real-time visibility for IT & Operations</p>
           </div>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handleRefresh}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 self-start sm:self-auto"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -51,7 +51,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPI Cards - Top Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <StatCard
             title="Total Seats"
             value={kpiData.totalSeats.toLocaleString()}
@@ -89,7 +89,7 @@ export default function Dashboard() {
         </div>
 
         {/* Second Row - KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <StatCard
             title="Compliance Rate"
             value={`${kpiData.complianceRate}%`}
@@ -124,7 +124,7 @@ export default function Dashboard() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
             <AlertsPanel />
