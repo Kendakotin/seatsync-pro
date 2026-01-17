@@ -2,9 +2,16 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  stickyFirstColumn?: boolean;
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, stickyFirstColumn = false, ...props }, ref) => (
+    <div className={cn(
+      "relative w-full overflow-auto scrollbar-thin",
+      stickyFirstColumn && "table-sticky-first"
+    )}>
       <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   ),
@@ -41,12 +48,17 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
 );
 TableRow.displayName = "TableRow";
 
-const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(
-  ({ className, ...props }, ref) => (
+interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  sticky?: boolean;
+}
+
+const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
+  ({ className, sticky, ...props }, ref) => (
     <th
       ref={ref}
       className={cn(
-        "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+        "h-10 md:h-12 px-2 md:px-4 text-left align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        sticky && "sticky left-0 z-10 bg-background after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border",
         className,
       )}
       {...props}
@@ -55,9 +67,21 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
 );
 TableHead.displayName = "TableHead";
 
-const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
-  ({ className, ...props }, ref) => (
-    <td ref={ref} className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)} {...props} />
+interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  sticky?: boolean;
+}
+
+const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
+  ({ className, sticky, ...props }, ref) => (
+    <td 
+      ref={ref} 
+      className={cn(
+        "p-2 md:p-4 align-middle text-xs md:text-sm [&:has([role=checkbox])]:pr-0",
+        sticky && "sticky left-0 z-10 bg-background after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border/50",
+        className
+      )} 
+      {...props} 
+    />
   ),
 );
 TableCell.displayName = "TableCell";

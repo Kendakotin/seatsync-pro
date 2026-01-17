@@ -686,23 +686,23 @@ export default function Hardware() {
 
         {/* Assets Table */}
         <div className="glass-card overflow-hidden">
-          <Table>
+          <Table stickyFirstColumn>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border/50">
-                <TableHead className="table-header">Asset Tag</TableHead>
+                <TableHead sticky className="table-header bg-secondary/95 backdrop-blur-sm">Asset Tag</TableHead>
                 <TableHead className="table-header">Hostname</TableHead>
-                <TableHead className="table-header">Type</TableHead>
-                <TableHead className="table-header">Brand/Model</TableHead>
-                <TableHead className="table-header">Serial</TableHead>
-                <TableHead className="table-header">CPU</TableHead>
-                <TableHead className="table-header">RAM</TableHead>
-                <TableHead className="table-header">Disk</TableHead>
+                <TableHead className="table-header hidden sm:table-cell">Type</TableHead>
+                <TableHead className="table-header hidden md:table-cell">Brand/Model</TableHead>
+                <TableHead className="table-header hidden lg:table-cell">Serial</TableHead>
+                <TableHead className="table-header hidden lg:table-cell">CPU</TableHead>
+                <TableHead className="table-header hidden md:table-cell">RAM</TableHead>
+                <TableHead className="table-header hidden lg:table-cell">Disk</TableHead>
                 <TableHead className="table-header">Status</TableHead>
-                <TableHead className="table-header">Primary User</TableHead>
-                <TableHead className="table-header">Last Login</TableHead>
-                <TableHead className="table-header">Profiles</TableHead>
-                <TableHead className="table-header">Security</TableHead>
-                <TableHead className="table-header w-[100px]">Actions</TableHead>
+                <TableHead className="table-header hidden xl:table-cell">Primary User</TableHead>
+                <TableHead className="table-header hidden xl:table-cell">Last Login</TableHead>
+                <TableHead className="table-header hidden xl:table-cell">Profiles</TableHead>
+                <TableHead className="table-header hidden sm:table-cell">Security</TableHead>
+                <TableHead className="table-header w-[80px] md:w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -754,29 +754,29 @@ export default function Hardware() {
                   
                   return (
                   <TableRow key={asset.id} className="hover:bg-muted/30 border-border/30">
-                    <TableCell className="font-mono text-sm font-medium">{asset.asset_tag}</TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell sticky className="font-mono text-xs md:text-sm font-medium bg-card/95 backdrop-blur-sm">{asset.asset_tag}</TableCell>
+                    <TableCell className="text-xs md:text-sm">
                       {hostnameDisplay}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <div className="flex items-center gap-2">
                         {getAssetIcon(asset.asset_type)}
-                        {asset.asset_type}
+                        <span className="hidden md:inline">{asset.asset_type}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {asset.brand} {asset.model}
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
+                    <TableCell className="font-mono text-xs text-muted-foreground hidden lg:table-cell">
                       {asset.serial_number || '-'}
                     </TableCell>
-                    <TableCell className="text-xs max-w-[150px] truncate" title={cpuDisplay}>
+                    <TableCell className="text-xs max-w-[150px] truncate hidden lg:table-cell" title={cpuDisplay}>
                       {cpuDisplay}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-xs md:text-sm hidden md:table-cell">
                       {ramDisplay}
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs hidden lg:table-cell">
                       {diskSpace 
                         ? (
                           <div>
@@ -793,72 +793,72 @@ export default function Hardware() {
                           : '-'}
                     </TableCell>
                     <TableCell>
-                      <span className={`status-badge ${statusColors[asset.status || 'Available'] || 'status-buffer'}`}>
+                      <span className={`status-badge text-[10px] md:text-xs ${statusColors[asset.status || 'Available'] || 'status-buffer'}`}>
                         {asset.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm max-w-[150px] truncate" title={primaryUserDisplay}>
+                    <TableCell className="text-xs md:text-sm max-w-[150px] truncate hidden xl:table-cell" title={primaryUserDisplay}>
                       {primaryUserDisplay}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs text-muted-foreground hidden xl:table-cell">
                       {asset.last_user_login 
                         ? new Date(asset.last_user_login).toLocaleDateString()
                         : '-'}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center hidden xl:table-cell">
                       {asset.user_profile_count ?? '-'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <div className="flex gap-1">
                         {asset.antivirus_status === 'Active' && (
-                          <Badge variant="outline" className="text-success border-success/30 text-xs">
+                          <Badge variant="outline" className="text-success border-success/30 text-[10px] md:text-xs">
                             AV
                           </Badge>
                         )}
                         {asset.encryption_status && (
-                          <Badge variant="outline" className="text-primary border-primary/30 text-xs">
+                          <Badge variant="outline" className="text-primary border-primary/30 text-[10px] md:text-xs">
                             ENC
                           </Badge>
                         )}
                         {asset.usb_policy_applied && (
-                          <Badge variant="outline" className="text-warning border-warning/30 text-xs">
+                          <Badge variant="outline" className="text-warning border-warning/30 text-[10px] md:text-xs hidden md:inline-flex">
                             USB
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5 md:gap-1">
                         {specs?.synced_via === 'device-agent' && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-primary hover:text-primary"
+                            className="h-7 w-7 md:h-8 md:w-8 text-primary hover:text-primary"
                             onClick={() => navigate(`/device-registrations?search=${encodeURIComponent(asset.asset_tag)}`)}
                             title="View device registration"
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            <ExternalLink className="w-3 h-3 md:w-4 md:h-4" />
                           </Button>
                         )}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7 md:h-8 md:w-8"
                           onClick={() => handleEditClick(asset)}
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3 h-3 md:w-4 md:h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          className="h-7 w-7 md:h-8 md:w-8 text-destructive hover:text-destructive"
                           onClick={() => {
                             if (confirm('Are you sure you want to delete this asset?')) {
                               deleteAsset.mutate(asset.id);
                             }
                           }}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
                         </Button>
                       </div>
                     </TableCell>
