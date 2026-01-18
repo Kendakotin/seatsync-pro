@@ -123,6 +123,7 @@ export type Database = {
           image_version: string | null
           last_user_login: string | null
           logged_in_user: string | null
+          mac_address: string | null
           model: string | null
           notes: string | null
           purchase_cost: number | null
@@ -155,6 +156,7 @@ export type Database = {
           image_version?: string | null
           last_user_login?: string | null
           logged_in_user?: string | null
+          mac_address?: string | null
           model?: string | null
           notes?: string | null
           purchase_cost?: number | null
@@ -187,6 +189,7 @@ export type Database = {
           image_version?: string | null
           last_user_login?: string | null
           logged_in_user?: string | null
+          mac_address?: string | null
           model?: string | null
           notes?: string | null
           purchase_cost?: number | null
