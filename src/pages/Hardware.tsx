@@ -37,7 +37,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, RefreshCw, Cloud, Loader2, ExternalLink, ScanBarcode } from 'lucide-react';
+import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, RefreshCw, Cloud, Loader2, ExternalLink, ScanBarcode, Shield, Lock, Usb } from 'lucide-react';
+import { TableCardToggle, DataCard, DataCardField, DataCardHeader, useTableCardView, ViewMode } from '@/components/ui/table-card-toggle';
 import { BarcodeScanner } from '@/components/scanner/BarcodeScanner';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -116,6 +117,7 @@ export default function Hardware() {
   const [bulkScannedTags, setBulkScannedTags] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<HardwareAsset | null>(null);
+  const { viewMode, setViewMode } = useTableCardView("table");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -679,52 +681,162 @@ export default function Hardware() {
               <SelectItem value="has_all">Complete Info</SelectItem>
             </SelectContent>
           </Select>
+          <TableCardToggle viewMode={viewMode} onViewModeChange={setViewMode} />
           <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ['hardware_assets'] })}>
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* Assets Table */}
-        <div className="glass-card overflow-hidden">
-          <Table stickyFirstColumn>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent border-border/50">
-                <TableHead sticky className="table-header bg-secondary/95 backdrop-blur-sm">Asset Tag</TableHead>
-                <TableHead className="table-header">Hostname</TableHead>
-                <TableHead className="table-header hidden sm:table-cell">Type</TableHead>
-                <TableHead className="table-header hidden md:table-cell">Brand/Model</TableHead>
-                <TableHead className="table-header hidden lg:table-cell">Serial</TableHead>
-                <TableHead className="table-header hidden lg:table-cell">CPU</TableHead>
-                <TableHead className="table-header hidden md:table-cell">RAM</TableHead>
-                <TableHead className="table-header hidden lg:table-cell">Disk</TableHead>
-                <TableHead className="table-header">Status</TableHead>
-                <TableHead className="table-header hidden xl:table-cell">Primary User</TableHead>
-                <TableHead className="table-header hidden xl:table-cell">Last Login</TableHead>
-                <TableHead className="table-header hidden xl:table-cell">Profiles</TableHead>
-                <TableHead className="table-header hidden sm:table-cell">Security</TableHead>
-                <TableHead className="table-header w-[80px] md:w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-                  </TableCell>
+        {/* Assets Display */}
+        {isLoading ? (
+          <div className="glass-card p-8 text-center">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+          </div>
+        ) : filteredAssets.length === 0 ? (
+          <div className="glass-card p-8 text-center text-muted-foreground">
+            No hardware assets found. Add your first asset or sync from Intune.
+          </div>
+        ) : viewMode === "card" ? (
+          /* Card View */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredAssets.map((asset) => {
+              const specs = asset.specs as Record<string, unknown> | null;
+              const freeDiskGb = specs?.free_disk_gb as number | undefined;
+              const cpuFromSpecs = formatCpu({
+                rawCpu: specs?.cpu,
+                processorArchitecture: specs?.processor_architecture,
+                processorCount: specs?.processor_count,
+                processorCoreCount: specs?.processor_core_count,
+              });
+              const cpuDisplay = asset.cpu || cpuFromSpecs || '-';
+              const ramFromBytes = bytesToGb(specs?.physical_memory_bytes);
+              const ramDisplay = asset.ram_gb
+                ? `${asset.ram_gb} GB`
+                : ramFromBytes
+                  ? `${formatGb(ramFromBytes)} GB`
+                  : (specs?.ram as string) || '-';
+              const diskType = asset.disk_type || 'SSD';
+              const diskSpace = asset.disk_space_gb;
+              const diskDisplay = specs?.storage as string;
+              const primaryUserDisplay = asset.logged_in_user || asset.assigned_agent || '-';
+              const hostnameDisplay = asset.hostname || (specs?.hostname as string) || '-';
+
+              return (
+                <DataCard key={asset.id}>
+                  <DataCardHeader
+                    title={<span className="font-mono">{asset.asset_tag}</span>}
+                    subtitle={hostnameDisplay}
+                    badge={
+                      <span className={`status-badge text-[10px] ${statusColors[asset.status || 'Available'] || 'status-buffer'}`}>
+                        {asset.status}
+                      </span>
+                    }
+                    icon={getAssetIcon(asset.asset_type)}
+                    actions={
+                      <div className="flex gap-1">
+                        {specs?.synced_via === 'device-agent' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-primary hover:text-primary"
+                            onClick={() => navigate(`/device-registrations?search=${encodeURIComponent(asset.asset_tag)}`)}
+                            title="View device registration"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleEditClick(asset)}
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this asset?')) {
+                              deleteAsset.mutate(asset.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    }
+                  />
+                  <div className="border-t border-border/50 pt-3 space-y-2">
+                    <DataCardField label="Type" value={asset.asset_type} />
+                    <DataCardField label="Brand/Model" value={`${asset.brand || ''} ${asset.model || ''}`.trim() || '-'} />
+                    <DataCardField label="Serial" value={<span className="font-mono text-xs">{asset.serial_number || '-'}</span>} />
+                    <DataCardField label="CPU" value={<span className="text-xs truncate max-w-[150px] block">{cpuDisplay}</span>} />
+                    <DataCardField label="RAM" value={ramDisplay} />
+                    <DataCardField 
+                      label="Disk" 
+                      value={diskSpace 
+                        ? `${diskType} ${diskSpace}GB${freeDiskGb !== undefined ? ` (Free: ${freeDiskGb}GB)` : ''}`
+                        : diskDisplay || '-'
+                      } 
+                    />
+                    <DataCardField label="Primary User" value={primaryUserDisplay} />
+                    <DataCardField 
+                      label="Last Login" 
+                      value={asset.last_user_login 
+                        ? new Date(asset.last_user_login).toLocaleDateString()
+                        : '-'
+                      } 
+                    />
+                  </div>
+                  <div className="flex gap-1 pt-2 border-t border-border/50">
+                    {asset.antivirus_status === 'Active' && (
+                      <Badge variant="outline" className="text-success border-success/30 text-[10px]">
+                        <Shield className="w-3 h-3 mr-1" /> AV
+                      </Badge>
+                    )}
+                    {asset.encryption_status && (
+                      <Badge variant="outline" className="text-primary border-primary/30 text-[10px]">
+                        <Lock className="w-3 h-3 mr-1" /> ENC
+                      </Badge>
+                    )}
+                    {asset.usb_policy_applied && (
+                      <Badge variant="outline" className="text-warning border-warning/30 text-[10px]">
+                        <Usb className="w-3 h-3 mr-1" /> USB
+                      </Badge>
+                    )}
+                  </div>
+                </DataCard>
+              );
+            })}
+          </div>
+        ) : (
+          /* Table View */
+          <div className="glass-card overflow-hidden">
+            <Table stickyFirstColumn>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-border/50">
+                  <TableHead sticky className="table-header bg-secondary/95 backdrop-blur-sm">Asset Tag</TableHead>
+                  <TableHead className="table-header">Hostname</TableHead>
+                  <TableHead className="table-header hidden sm:table-cell">Type</TableHead>
+                  <TableHead className="table-header hidden md:table-cell">Brand/Model</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">Serial</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">CPU</TableHead>
+                  <TableHead className="table-header hidden md:table-cell">RAM</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">Disk</TableHead>
+                  <TableHead className="table-header">Status</TableHead>
+                  <TableHead className="table-header hidden xl:table-cell">Primary User</TableHead>
+                  <TableHead className="table-header hidden xl:table-cell">Last Login</TableHead>
+                  <TableHead className="table-header hidden xl:table-cell">Profiles</TableHead>
+                  <TableHead className="table-header hidden sm:table-cell">Security</TableHead>
+                  <TableHead className="table-header w-[80px] md:w-[100px]">Actions</TableHead>
                 </TableRow>
-              ) : filteredAssets.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
-                    No hardware assets found. Add your first asset or sync from Intune.
-                  </TableCell>
-                </TableRow>
-              ) : (
-              filteredAssets.map((asset) => {
-                  // Get values from specs JSON as fallback for legacy data
+              </TableHeader>
+              <TableBody>
+                {filteredAssets.map((asset) => {
                   const specs = asset.specs as Record<string, unknown> | null;
                   const freeDiskGb = specs?.free_disk_gb as number | undefined;
-
-                  // CPU: prefer column, else compute from Intune specs
                   const cpuFromSpecs = formatCpu({
                     rawCpu: specs?.cpu,
                     processorArchitecture: specs?.processor_architecture,
@@ -732,143 +844,135 @@ export default function Hardware() {
                     processorCoreCount: specs?.processor_core_count,
                   });
                   const cpuDisplay = asset.cpu || cpuFromSpecs || '-';
-
-                  // RAM: prefer column, else compute from Intune physical_memory_bytes
                   const ramFromBytes = bytesToGb(specs?.physical_memory_bytes);
                   const ramDisplay = asset.ram_gb
                     ? `${asset.ram_gb} GB`
                     : ramFromBytes
                       ? `${formatGb(ramFromBytes)} GB`
                       : (specs?.ram as string) || '-';
-                  // Get disk info with fallback
                   const diskType = asset.disk_type || 'SSD';
                   const diskSpace = asset.disk_space_gb;
                   const diskDisplay = specs?.storage as string;
-                  
-                  // Get primary user - from Intune this is the assigned user, not the currently logged in user
-                  // Intune userPrincipalName is the primary assigned user, not real-time logged-in user
                   const primaryUserDisplay = asset.logged_in_user || asset.assigned_agent || '-';
-                  
-                  // Get hostname - prefer hostname column, then from specs
                   const hostnameDisplay = asset.hostname || (specs?.hostname as string) || '-';
                   
                   return (
-                  <TableRow key={asset.id} className="hover:bg-muted/30 border-border/30">
-                    <TableCell sticky className="font-mono text-xs md:text-sm font-medium bg-card/95 backdrop-blur-sm">{asset.asset_tag}</TableCell>
-                    <TableCell className="text-xs md:text-sm">
-                      {hostnameDisplay}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <div className="flex items-center gap-2">
-                        {getAssetIcon(asset.asset_type)}
-                        <span className="hidden md:inline">{asset.asset_type}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {asset.brand} {asset.model}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground hidden lg:table-cell">
-                      {asset.serial_number || '-'}
-                    </TableCell>
-                    <TableCell className="text-xs max-w-[150px] truncate hidden lg:table-cell" title={cpuDisplay}>
-                      {cpuDisplay}
-                    </TableCell>
-                    <TableCell className="text-xs md:text-sm hidden md:table-cell">
-                      {ramDisplay}
-                    </TableCell>
-                    <TableCell className="text-xs hidden lg:table-cell">
-                      {diskSpace 
-                        ? (
-                          <div>
-                            <span>{diskType} {diskSpace}GB</span>
-                            {freeDiskGb !== undefined && (
-                              <span className="text-muted-foreground block">
-                                Free: {freeDiskGb}GB
-                              </span>
-                            )}
-                          </div>
-                        )
-                        : diskDisplay 
-                          ? diskDisplay 
+                    <TableRow key={asset.id} className="hover:bg-muted/30 border-border/30">
+                      <TableCell sticky className="font-mono text-xs md:text-sm font-medium bg-card/95 backdrop-blur-sm">{asset.asset_tag}</TableCell>
+                      <TableCell className="text-xs md:text-sm">
+                        {hostnameDisplay}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <div className="flex items-center gap-2">
+                          {getAssetIcon(asset.asset_type)}
+                          <span className="hidden md:inline">{asset.asset_type}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {asset.brand} {asset.model}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground hidden lg:table-cell">
+                        {asset.serial_number || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[150px] truncate hidden lg:table-cell" title={cpuDisplay}>
+                        {cpuDisplay}
+                      </TableCell>
+                      <TableCell className="text-xs md:text-sm hidden md:table-cell">
+                        {ramDisplay}
+                      </TableCell>
+                      <TableCell className="text-xs hidden lg:table-cell">
+                        {diskSpace 
+                          ? (
+                            <div>
+                              <span>{diskType} {diskSpace}GB</span>
+                              {freeDiskGb !== undefined && (
+                                <span className="text-muted-foreground block">
+                                  Free: {freeDiskGb}GB
+                                </span>
+                              )}
+                            </div>
+                          )
+                          : diskDisplay 
+                            ? diskDisplay 
+                            : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`status-badge text-[10px] md:text-xs ${statusColors[asset.status || 'Available'] || 'status-buffer'}`}>
+                          {asset.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs md:text-sm max-w-[150px] truncate hidden xl:table-cell" title={primaryUserDisplay}>
+                        {primaryUserDisplay}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground hidden xl:table-cell">
+                        {asset.last_user_login 
+                          ? new Date(asset.last_user_login).toLocaleDateString()
                           : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`status-badge text-[10px] md:text-xs ${statusColors[asset.status || 'Available'] || 'status-buffer'}`}>
-                        {asset.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs md:text-sm max-w-[150px] truncate hidden xl:table-cell" title={primaryUserDisplay}>
-                      {primaryUserDisplay}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground hidden xl:table-cell">
-                      {asset.last_user_login 
-                        ? new Date(asset.last_user_login).toLocaleDateString()
-                        : '-'}
-                    </TableCell>
-                    <TableCell className="text-center hidden xl:table-cell">
-                      {asset.user_profile_count ?? '-'}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <div className="flex gap-1">
-                        {asset.antivirus_status === 'Active' && (
-                          <Badge variant="outline" className="text-success border-success/30 text-[10px] md:text-xs">
-                            AV
-                          </Badge>
-                        )}
-                        {asset.encryption_status && (
-                          <Badge variant="outline" className="text-primary border-primary/30 text-[10px] md:text-xs">
-                            ENC
-                          </Badge>
-                        )}
-                        {asset.usb_policy_applied && (
-                          <Badge variant="outline" className="text-warning border-warning/30 text-[10px] md:text-xs hidden md:inline-flex">
-                            USB
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-0.5 md:gap-1">
-                        {specs?.synced_via === 'device-agent' && (
+                      </TableCell>
+                      <TableCell className="text-center hidden xl:table-cell">
+                        {asset.user_profile_count ?? '-'}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <div className="flex gap-1">
+                          {asset.antivirus_status === 'Active' && (
+                            <Badge variant="outline" className="text-success border-success/30 text-[10px] md:text-xs">
+                              AV
+                            </Badge>
+                          )}
+                          {asset.encryption_status && (
+                            <Badge variant="outline" className="text-primary border-primary/30 text-[10px] md:text-xs">
+                              ENC
+                            </Badge>
+                          )}
+                          {asset.usb_policy_applied && (
+                            <Badge variant="outline" className="text-warning border-warning/30 text-[10px] md:text-xs hidden md:inline-flex">
+                              USB
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-0.5 md:gap-1">
+                          {specs?.synced_via === 'device-agent' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 md:h-8 md:w-8 text-primary hover:text-primary"
+                              onClick={() => navigate(`/device-registrations?search=${encodeURIComponent(asset.asset_tag)}`)}
+                              title="View device registration"
+                            >
+                              <ExternalLink className="w-3 h-3 md:w-4 md:h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 md:h-8 md:w-8 text-primary hover:text-primary"
-                            onClick={() => navigate(`/device-registrations?search=${encodeURIComponent(asset.asset_tag)}`)}
-                            title="View device registration"
+                            className="h-7 w-7 md:h-8 md:w-8"
+                            onClick={() => handleEditClick(asset)}
                           >
-                            <ExternalLink className="w-3 h-3 md:w-4 md:h-4" />
+                            <Edit className="w-3 h-3 md:w-4 md:h-4" />
                           </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 md:h-8 md:w-8"
-                          onClick={() => handleEditClick(asset)}
-                        >
-                          <Edit className="w-3 h-3 md:w-4 md:h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 md:h-8 md:w-8 text-destructive hover:text-destructive"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this asset?')) {
-                              deleteAsset.mutate(asset.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 md:h-8 md:w-8 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this asset?')) {
+                                deleteAsset.mutate(asset.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
