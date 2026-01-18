@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import { seats, type Seat, type SeatStatus, type Shift } from '@/lib/mockData';
-import { Search, Filter, Download, ChevronDown, Monitor, User, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Filter, Download, ChevronDown, Monitor, User, Shield, CheckCircle, XCircle, HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TableCardToggle, DataCard, DataCardField, DataCardHeader, useTableCardView } from '@/components/ui/table-card-toggle';
+import { Button } from '@/components/ui/button';
 
 const statusStyles: Record<SeatStatus, string> = {
   active: 'status-active',
@@ -30,6 +32,7 @@ export function SeatsTable() {
   const [statusFilter, setStatusFilter] = useState<SeatStatus | 'all'>('all');
   const [shiftFilter, setShiftFilter] = useState<Shift | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const { viewMode, setViewMode } = useTableCardView("table");
 
   const filteredSeats = useMemo(() => {
     return seats.filter(seat => {
@@ -98,6 +101,7 @@ export function SeatsTable() {
               Filters
               <ChevronDown className={cn('w-4 h-4 transition-transform', showFilters && 'rotate-180')} />
             </button>
+            <TableCardToggle viewMode={viewMode} onViewModeChange={setViewMode} />
             <button className="flex items-center gap-2 px-4 h-10 rounded-lg bg-secondary/50 border border-border hover:bg-secondary text-sm transition-colors">
               <Download className="w-4 h-4" />
               Export
@@ -125,104 +129,181 @@ export function SeatsTable() {
         )}
       </div>
 
-      {/* Table */}
-      <div className="glass-card overflow-hidden">
-        <div className="overflow-x-auto scrollbar-thin -mx-4 md:mx-0">
-          <table className="w-full min-w-[800px]">
-            <thead>
-              <tr className="border-b border-border bg-secondary/30">
-                <th className="table-header text-left p-2 md:p-4 sticky left-0 z-10 bg-secondary/95 backdrop-blur-sm after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">Seat ID</th>
-                <th className="table-header text-left p-2 md:p-4">Status</th>
-                <th className="table-header text-left p-2 md:p-4">Account / Program</th>
-                <th className="table-header text-left p-2 md:p-4 hidden md:table-cell">Agent</th>
-                <th className="table-header text-left p-2 md:p-4">Shift</th>
-                <th className="table-header text-left p-2 md:p-4 hidden lg:table-cell">PC Asset</th>
-                <th className="table-header text-center p-2 md:p-4">Security</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSeats.slice(0, 20).map((seat, index) => (
-                <tr
-                  key={seat.id}
-                  className="border-b border-border/50 hover:bg-secondary/20 transition-colors cursor-pointer animate-fade-in"
-                  style={{ animationDelay: `${index * 20}ms` }}
-                >
-                  <td className="p-2 md:p-4 sticky left-0 z-10 bg-card/95 backdrop-blur-sm after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border/50">
-                    <div className="flex items-center gap-2">
-                      <Monitor className="w-4 h-4 text-muted-foreground hidden md:block" />
-                      <span className="font-mono text-xs md:text-sm text-primary">{seat.seatId}</span>
-                    </div>
-                  </td>
-                  <td className="p-2 md:p-4">
-                    <span className={cn('status-badge text-[10px] md:text-xs', statusStyles[seat.status])}>
-                      {statusLabels[seat.status]}
-                    </span>
-                  </td>
-                  <td className="p-2 md:p-4">
-                    <div>
-                      <p className="text-xs md:text-sm font-medium truncate max-w-[120px] md:max-w-none">{seat.account}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground truncate max-w-[120px] md:max-w-none">{seat.program}</p>
-                    </div>
-                  </td>
-                  <td className="p-2 md:p-4 hidden md:table-cell">
-                    {seat.agent ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                          <User className="w-3 h-3 text-primary" />
-                        </div>
-                        <span className="text-sm">{seat.agent}</span>
+      {/* Seats Display */}
+      {viewMode === "card" ? (
+        /* Card View */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredSeats.slice(0, 20).map((seat, index) => (
+            <DataCard 
+              key={seat.id}
+              className="animate-fade-in"
+            >
+              <DataCardHeader
+                title={<span className="font-mono text-primary">{seat.seatId}</span>}
+                subtitle={seat.program}
+                badge={
+                  <span className={cn('status-badge text-[10px]', statusStyles[seat.status])}>
+                    {statusLabels[seat.status]}
+                  </span>
+                }
+                icon={<Monitor className="w-4 h-4" />}
+              />
+              <div className="border-t border-border/50 pt-3 space-y-2">
+                <DataCardField label="Account" value={seat.account} />
+                <DataCardField 
+                  label="Agent" 
+                  value={seat.agent ? (
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                        <User className="w-2.5 h-2.5 text-primary" />
                       </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="p-2 md:p-4">
+                      <span>{seat.agent}</span>
+                    </div>
+                  ) : null} 
+                />
+                <DataCardField 
+                  label="Shift" 
+                  value={
                     <span className={cn(
-                      'text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded',
+                      'text-xs px-2 py-0.5 rounded',
                       seat.shift === 'day' && 'bg-warning/20 text-warning',
                       seat.shift === 'night' && 'bg-blue-500/20 text-blue-400',
                       seat.shift === 'graveyard' && 'bg-purple-500/20 text-purple-400'
                     )}>
                       {shiftLabels[seat.shift]}
                     </span>
-                  </td>
-                  <td className="p-2 md:p-4 hidden lg:table-cell">
-                    <div>
+                  } 
+                />
+                <DataCardField 
+                  label="PC Asset" 
+                  value={
+                    <div className="text-right">
                       <p className="font-mono text-xs">{seat.pcAssetTag}</p>
                       <p className="text-[10px] text-muted-foreground">{seat.imageVersion}</p>
                     </div>
-                  </td>
-                  <td className="p-2 md:p-4">
-                    <div className="flex items-center justify-center gap-1">
-                      {seat.antivirusStatus ? (
-                        <Shield className="w-3 h-3 md:w-4 md:h-4 text-success" />
-                      ) : (
-                        <Shield className="w-3 h-3 md:w-4 md:h-4 text-destructive" />
-                      )}
-                      {seat.encryptionStatus ? (
-                        <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-success" />
-                      ) : (
-                        <XCircle className="w-3 h-3 md:w-4 md:h-4 text-destructive" />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  } 
+                />
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <span className="text-xs text-muted-foreground">Security</span>
+                <div className="flex items-center gap-1">
+                  {seat.antivirusStatus ? (
+                    <Shield className="w-4 h-4 text-success" />
+                  ) : (
+                    <Shield className="w-4 h-4 text-destructive" />
+                  )}
+                  {seat.encryptionStatus ? (
+                    <CheckCircle className="w-4 h-4 text-success" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  )}
+                </div>
+              </div>
+            </DataCard>
+          ))}
         </div>
-        <div className="p-3 md:p-4 border-t border-border bg-secondary/20 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs md:text-sm text-muted-foreground">
-            Showing {Math.min(20, filteredSeats.length)} of {filteredSeats.length} seats
-          </p>
-          <div className="flex items-center gap-2">
-            <button className="px-2 md:px-3 py-1 md:py-1.5 rounded-md bg-secondary/50 text-xs md:text-sm hover:bg-secondary transition-colors">
-              Previous
-            </button>
-            <button className="px-2 md:px-3 py-1 md:py-1.5 rounded-md bg-primary text-primary-foreground text-xs md:text-sm hover:bg-primary/90 transition-colors">
-              Next
-            </button>
+      ) : (
+        /* Table View */
+        <div className="glass-card overflow-hidden">
+          <div className="overflow-x-auto scrollbar-thin -mx-4 md:mx-0">
+            <table className="w-full min-w-[800px]">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="table-header text-left p-2 md:p-4 sticky left-0 z-10 bg-secondary/95 backdrop-blur-sm after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">Seat ID</th>
+                  <th className="table-header text-left p-2 md:p-4">Status</th>
+                  <th className="table-header text-left p-2 md:p-4">Account / Program</th>
+                  <th className="table-header text-left p-2 md:p-4 hidden md:table-cell">Agent</th>
+                  <th className="table-header text-left p-2 md:p-4">Shift</th>
+                  <th className="table-header text-left p-2 md:p-4 hidden lg:table-cell">PC Asset</th>
+                  <th className="table-header text-center p-2 md:p-4">Security</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSeats.slice(0, 20).map((seat, index) => (
+                  <tr
+                    key={seat.id}
+                    className="border-b border-border/50 hover:bg-secondary/20 transition-colors cursor-pointer animate-fade-in"
+                    style={{ animationDelay: `${index * 20}ms` }}
+                  >
+                    <td className="p-2 md:p-4 sticky left-0 z-10 bg-card/95 backdrop-blur-sm after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border/50">
+                      <div className="flex items-center gap-2">
+                        <Monitor className="w-4 h-4 text-muted-foreground hidden md:block" />
+                        <span className="font-mono text-xs md:text-sm text-primary">{seat.seatId}</span>
+                      </div>
+                    </td>
+                    <td className="p-2 md:p-4">
+                      <span className={cn('status-badge text-[10px] md:text-xs', statusStyles[seat.status])}>
+                        {statusLabels[seat.status]}
+                      </span>
+                    </td>
+                    <td className="p-2 md:p-4">
+                      <div>
+                        <p className="text-xs md:text-sm font-medium truncate max-w-[120px] md:max-w-none">{seat.account}</p>
+                        <p className="text-[10px] md:text-xs text-muted-foreground truncate max-w-[120px] md:max-w-none">{seat.program}</p>
+                      </div>
+                    </td>
+                    <td className="p-2 md:p-4 hidden md:table-cell">
+                      {seat.agent ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                            <User className="w-3 h-3 text-primary" />
+                          </div>
+                          <span className="text-sm">{seat.agent}</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="p-2 md:p-4">
+                      <span className={cn(
+                        'text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded',
+                        seat.shift === 'day' && 'bg-warning/20 text-warning',
+                        seat.shift === 'night' && 'bg-blue-500/20 text-blue-400',
+                        seat.shift === 'graveyard' && 'bg-purple-500/20 text-purple-400'
+                      )}>
+                        {shiftLabels[seat.shift]}
+                      </span>
+                    </td>
+                    <td className="p-2 md:p-4 hidden lg:table-cell">
+                      <div>
+                        <p className="font-mono text-xs">{seat.pcAssetTag}</p>
+                        <p className="text-[10px] text-muted-foreground">{seat.imageVersion}</p>
+                      </div>
+                    </td>
+                    <td className="p-2 md:p-4">
+                      <div className="flex items-center justify-center gap-1">
+                        {seat.antivirusStatus ? (
+                          <Shield className="w-3 h-3 md:w-4 md:h-4 text-success" />
+                        ) : (
+                          <Shield className="w-3 h-3 md:w-4 md:h-4 text-destructive" />
+                        )}
+                        {seat.encryptionStatus ? (
+                          <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-success" />
+                        ) : (
+                          <XCircle className="w-3 h-3 md:w-4 md:h-4 text-destructive" />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        </div>
+      )}
+
+      {/* Pagination Footer */}
+      <div className="glass-card p-3 md:p-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <p className="text-xs md:text-sm text-muted-foreground">
+          Showing {Math.min(20, filteredSeats.length)} of {filteredSeats.length} seats
+        </p>
+        <div className="flex items-center gap-2">
+          <button className="px-2 md:px-3 py-1 md:py-1.5 rounded-md bg-secondary/50 text-xs md:text-sm hover:bg-secondary transition-colors">
+            Previous
+          </button>
+          <button className="px-2 md:px-3 py-1 md:py-1.5 rounded-md bg-primary text-primary-foreground text-xs md:text-sm hover:bg-primary/90 transition-colors">
+            Next
+          </button>
         </div>
       </div>
     </div>
