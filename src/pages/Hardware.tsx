@@ -12,6 +12,7 @@ import {
   isAwaitingIntuneSync,
   sanitizeUserString,
 } from '@/lib/intuneInventoryFormat';
+import { parseBarcodeData, formatMacAddress } from '@/lib/barcodeParser';
 import {
   Table,
   TableBody,
@@ -90,6 +91,7 @@ const emptyAsset = {
   brand: '',
   model: '',
   serial_number: '',
+  mac_address: '',
   status: 'Available',
   site: '',
   floor: '',
@@ -101,6 +103,7 @@ const emptyAsset = {
   purchase_date: '',
   purchase_cost: '',
   image_version: '',
+  hostname: '',
   notes: '',
 };
 
@@ -219,6 +222,7 @@ export default function Hardware() {
       brand: asset.brand || '',
       model: asset.model || '',
       serial_number: asset.serial_number || '',
+      mac_address: (asset as any).mac_address || '',
       status: asset.status || 'Available',
       site: asset.site || '',
       floor: asset.floor || '',
@@ -230,6 +234,7 @@ export default function Hardware() {
       purchase_date: asset.purchase_date || '',
       purchase_cost: asset.purchase_cost?.toString() || '',
       image_version: asset.image_version || '',
+      hostname: asset.hostname || '',
       notes: asset.notes || '',
     });
     setIsEditDialogOpen(true);
@@ -360,6 +365,17 @@ export default function Hardware() {
           />
         </div>
         <div className="space-y-2">
+          <Label htmlFor="mac_address">MAC Address</Label>
+          <Input
+            id="mac_address"
+            value={asset.mac_address}
+            onChange={(e) => setAsset({ ...asset, mac_address: formatMacAddress(e.target.value) })}
+            placeholder="AA:BB:CC:DD:EE:FF"
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
           <Select
             value={asset.status}
@@ -377,6 +393,15 @@ export default function Hardware() {
               <SelectItem value="EOL">End of Life</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="hostname">Hostname</Label>
+          <Input
+            id="hostname"
+            value={asset.hostname || ''}
+            onChange={(e) => setAsset({ ...asset, hostname: e.target.value })}
+            placeholder="PC-OFFICE-001"
+          />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -570,9 +595,35 @@ export default function Hardware() {
           onOpenChange={setIsScannerOpen}
           onScan={(result) => {
             if (scannerTarget === 'newAsset') {
-              setNewAsset((prev) => ({ ...prev, asset_tag: result }));
+              // Parse barcode data and auto-fill fields
+              const parsed = parseBarcodeData(result);
+              setNewAsset((prev) => ({
+                ...prev,
+                asset_tag: parsed.asset_tag || prev.asset_tag || result,
+                brand: parsed.brand || prev.brand,
+                model: parsed.model || prev.model,
+                serial_number: parsed.serial_number || prev.serial_number,
+                mac_address: parsed.mac_address || prev.mac_address,
+                status: parsed.status || prev.status,
+                asset_type: parsed.asset_type || prev.asset_type,
+                hostname: parsed.hostname || prev.hostname || '',
+              }));
+              toast.success('Barcode parsed - fields auto-filled');
             } else if (scannerTarget === 'editAsset') {
-              setEditAsset((prev) => ({ ...prev, asset_tag: result }));
+              // Parse barcode data and auto-fill fields
+              const parsed = parseBarcodeData(result);
+              setEditAsset((prev) => ({
+                ...prev,
+                asset_tag: parsed.asset_tag || prev.asset_tag || result,
+                brand: parsed.brand || prev.brand,
+                model: parsed.model || prev.model,
+                serial_number: parsed.serial_number || prev.serial_number,
+                mac_address: parsed.mac_address || prev.mac_address,
+                status: parsed.status || prev.status,
+                asset_type: parsed.asset_type || prev.asset_type,
+                hostname: parsed.hostname || prev.hostname || '',
+              }));
+              toast.success('Barcode parsed - fields auto-filled');
             } else {
               setSearchQuery(result);
             }
