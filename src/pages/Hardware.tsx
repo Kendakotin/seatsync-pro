@@ -279,7 +279,7 @@ export default function Hardware() {
     return matchesSearch && matchesStatus && matchesType && matchesHardwareInfo;
   });
 
-  const assetTypes = ['Workstation', 'Headset', 'Monitor', 'Thin Client', 'IP Phone', 'UPS', 'Switch', 'Access Point', 'Mobile', 'Other'];
+  const assetTypes = ['Workstation', 'Headset', 'Monitor', 'Thin Client', 'IP Phone', 'UPS', 'Switch', 'Router', 'Firewall', 'Access Point', 'Mobile', 'Other'];
 
   const getAssetIcon = (type: string) => {
     switch (type) {
