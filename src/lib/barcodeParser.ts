@@ -15,19 +15,26 @@ export interface ParsedAssetData {
 }
 
 // Common brand identifiers found in serial numbers or barcodes
+// Using word boundary patterns to match brand anywhere in text
 const brandPatterns: { pattern: RegExp; brand: string }[] = [
-  { pattern: /^(DELL|dell)/i, brand: 'Dell' },
-  { pattern: /^(HP|hp|HPE)/i, brand: 'HP' },
-  { pattern: /^(LEN|lenovo)/i, brand: 'Lenovo' },
-  { pattern: /^(ASUS|asus)/i, brand: 'Asus' },
-  { pattern: /^(ACER|acer)/i, brand: 'Acer' },
-  { pattern: /^(CISCO|cisco)/i, brand: 'Cisco' },
-  { pattern: /^(APPLE|apple)/i, brand: 'Apple' },
-  { pattern: /^(SAMSUNG|samsung)/i, brand: 'Samsung' },
-  { pattern: /^(LOGITECH|logitech)/i, brand: 'Logitech' },
-  { pattern: /^(JABRA|jabra)/i, brand: 'Jabra' },
-  { pattern: /^(PLANTRONICS|plantronics|POLY|poly)/i, brand: 'Poly' },
-  { pattern: /^(MICROSOFT|microsoft)/i, brand: 'Microsoft' },
+  { pattern: /\b(DELL)\b/i, brand: 'Dell' },
+  { pattern: /\b(HP|HPE|Hewlett[\s-]?Packard)\b/i, brand: 'HP' },
+  { pattern: /\b(LENOVO)\b/i, brand: 'Lenovo' },
+  { pattern: /\b(ASUS)\b/i, brand: 'Asus' },
+  { pattern: /\b(ACER)\b/i, brand: 'Acer' },
+  { pattern: /\b(CISCO)\b/i, brand: 'Cisco' },
+  { pattern: /\b(APPLE)\b/i, brand: 'Apple' },
+  { pattern: /\b(SAMSUNG)\b/i, brand: 'Samsung' },
+  { pattern: /\b(LOGITECH)\b/i, brand: 'Logitech' },
+  { pattern: /\b(JABRA)\b/i, brand: 'Jabra' },
+  { pattern: /\b(PLANTRONICS|POLY)\b/i, brand: 'Poly' },
+  { pattern: /\b(MICROSOFT)\b/i, brand: 'Microsoft' },
+  { pattern: /\b(ARUBA)\b/i, brand: 'Aruba' },
+  { pattern: /\b(UBIQUITI|UNIFI)\b/i, brand: 'Ubiquiti' },
+  { pattern: /\b(NETGEAR)\b/i, brand: 'Netgear' },
+  { pattern: /\b(TP[-\s]?LINK)\b/i, brand: 'TP-Link' },
+  { pattern: /\b(RUCKUS)\b/i, brand: 'Ruckus' },
+  { pattern: /\b(MERAKI)\b/i, brand: 'Meraki' },
 ];
 
 // MAC address patterns
@@ -45,14 +52,35 @@ const serialPatterns = [
 ];
 
 /**
- * Detects brand from scanned text
+ * Detects brand from scanned text and returns the matched portion
  */
-function detectBrand(text: string): string | undefined {
+function detectBrand(text: string): { brand: string; match: string } | undefined {
   for (const { pattern, brand } of brandPatterns) {
-    if (pattern.test(text)) {
-      return brand;
+    const match = text.match(pattern);
+    if (match) {
+      return { brand, match: match[0] };
     }
   }
+  return undefined;
+}
+
+/**
+ * Extracts model from text after removing brand
+ */
+function extractModel(text: string, brandMatch?: string): string | undefined {
+  if (!brandMatch) return undefined;
+  
+  // Remove the brand from the text to get the model
+  const modelPart = text.replace(new RegExp(`\\b${brandMatch}\\b`, 'i'), '').trim();
+  
+  // Clean up any leading/trailing separators
+  const cleanedModel = modelPart.replace(/^[\s,\-:]+|[\s,\-:]+$/g, '').trim();
+  
+  // Return if we have a valid model string
+  if (cleanedModel && cleanedModel.length > 0) {
+    return cleanedModel;
+  }
+  
   return undefined;
 }
 
@@ -204,16 +232,13 @@ function parsePlainText(text: string): ParsedAssetData {
   }
 
   // Try to detect brand from text
-  const brand = detectBrand(cleanText);
-  if (brand) {
-    result.brand = brand;
-    // Assume the rest is the model/serial
-    const remaining = cleanText.replace(new RegExp(`^${brand}[\\s_-]*`, 'i'), '');
-    if (remaining) {
-      // If it looks like a model number (contains letters and numbers mixed)
-      if (/[A-Za-z].*\d|\d.*[A-Za-z]/.test(remaining)) {
-        result.model = remaining;
-      }
+  const brandResult = detectBrand(cleanText);
+  if (brandResult) {
+    result.brand = brandResult.brand;
+    // Extract model from the remaining text
+    const model = extractModel(cleanText, brandResult.match);
+    if (model) {
+      result.model = model;
     }
   }
 
