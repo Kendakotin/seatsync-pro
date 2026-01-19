@@ -51,6 +51,7 @@ type HardwareAsset = {
   brand: string | null;
   model: string | null;
   serial_number: string | null;
+  mac_address: string | null;
   status: string | null;
   antivirus_status: string | null;
   encryption_status: boolean | null;
@@ -222,7 +223,7 @@ export default function Hardware() {
       brand: asset.brand || '',
       model: asset.model || '',
       serial_number: asset.serial_number || '',
-      mac_address: (asset as any).mac_address || '',
+      mac_address: asset.mac_address || '',
       status: asset.status || 'Available',
       site: asset.site || '',
       floor: asset.floor || '',
@@ -823,6 +824,7 @@ export default function Hardware() {
                     <DataCardField label="Type" value={asset.asset_type} />
                     <DataCardField label="Brand/Model" value={`${asset.brand || ''} ${asset.model || ''}`.trim() || '-'} />
                     <DataCardField label="Serial" value={<span className="font-mono text-xs">{asset.serial_number || '-'}</span>} />
+                    <DataCardField label="MAC Address" value={<span className="font-mono text-xs">{asset.mac_address || '-'}</span>} />
                     <DataCardField label="CPU" value={<span className="text-xs truncate max-w-[150px] block">{cpuDisplay}</span>} />
                     <DataCardField label="RAM" value={ramDisplay} />
                     <DataCardField 
@@ -873,6 +875,7 @@ export default function Hardware() {
                   <TableHead className="table-header hidden sm:table-cell">Type</TableHead>
                   <TableHead className="table-header hidden md:table-cell">Brand/Model</TableHead>
                   <TableHead className="table-header hidden lg:table-cell">Serial</TableHead>
+                  <TableHead className="table-header hidden xl:table-cell">MAC Address</TableHead>
                   <TableHead className="table-header hidden lg:table-cell">CPU</TableHead>
                   <TableHead className="table-header hidden md:table-cell">RAM</TableHead>
                   <TableHead className="table-header hidden lg:table-cell">Disk</TableHead>
@@ -924,6 +927,9 @@ export default function Hardware() {
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground hidden lg:table-cell">
                         {asset.serial_number || '-'}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground hidden xl:table-cell">
+                        {asset.mac_address || '-'}
                       </TableCell>
                       <TableCell className="text-xs max-w-[150px] truncate hidden lg:table-cell" title={cpuDisplay}>
                         {cpuDisplay}
