@@ -255,6 +255,7 @@ export default function Hardware() {
         asset.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         asset.model?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         asset.serial_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.mac_address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         asset.assigned_agent?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         asset.hostname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         asset.logged_in_user?.toLowerCase().includes(searchQuery.toLowerCase());
