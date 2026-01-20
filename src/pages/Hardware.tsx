@@ -38,7 +38,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, RefreshCw, Cloud, Loader2, ExternalLink, ScanBarcode, Shield, Lock, Usb } from 'lucide-react';
+import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, RefreshCw, Cloud, Loader2, ExternalLink, ScanBarcode, Shield, Lock, Usb, Router, ShieldCheck, Wifi, Network } from 'lucide-react';
 import { TableCardToggle, DataCard, DataCardField, DataCardHeader, useTableCardView, ViewMode } from '@/components/ui/table-card-toggle';
 import { BarcodeScanner } from '@/components/scanner/BarcodeScanner';
 import { toast } from 'sonner';
@@ -287,6 +287,14 @@ export default function Hardware() {
         return <Headphones className="w-4 h-4" />;
       case 'Monitor':
         return <Monitor className="w-4 h-4" />;
+      case 'Router':
+        return <Router className="w-4 h-4" />;
+      case 'Firewall':
+        return <ShieldCheck className="w-4 h-4" />;
+      case 'Access Point':
+        return <Wifi className="w-4 h-4" />;
+      case 'Switch':
+        return <Network className="w-4 h-4" />;
       default:
         return <HardDrive className="w-4 h-4" />;
     }
