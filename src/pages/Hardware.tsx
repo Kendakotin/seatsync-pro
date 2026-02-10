@@ -120,6 +120,7 @@ export default function Hardware() {
   const [scannerTarget, setScannerTarget] = useState<'search' | 'newAsset' | 'editAsset'>('search');
   const [bulkScannedTags, setBulkScannedTags] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isIdentifying, setIsIdentifying] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<HardwareAsset | null>(null);
   const { viewMode, setViewMode } = useTableCardView("table");
   const queryClient = useQueryClient();
@@ -127,6 +128,45 @@ export default function Hardware() {
 
   const [newAsset, setNewAsset] = useState(emptyAsset);
   const [editAsset, setEditAsset] = useState(emptyAsset);
+
+  const identifyAssetWithAI = async (scannedText: string) => {
+    try {
+      setIsIdentifying(true);
+      toast.info('🤖 AI identifying asset...');
+      const { data, error } = await supabase.functions.invoke('identify-asset', {
+        body: { scannedText },
+      });
+
+      if (error) throw error;
+      if (data?.result && Object.keys(data.result).length > 0) {
+        return data.result as Record<string, string>;
+      }
+      return null;
+    } catch (err) {
+      console.error('AI identification failed:', err);
+      return null;
+    } finally {
+      setIsIdentifying(false);
+    }
+  };
+
+  const applyParsedData = (
+    setter: React.Dispatch<React.SetStateAction<typeof newAsset>>,
+    parsed: Record<string, string | undefined>,
+    rawText: string
+  ) => {
+    setter((prev) => ({
+      ...prev,
+      asset_tag: parsed.asset_tag || prev.asset_tag || rawText,
+      brand: parsed.brand || prev.brand,
+      model: parsed.model || prev.model,
+      serial_number: parsed.serial_number || prev.serial_number,
+      mac_address: parsed.mac_address || prev.mac_address,
+      status: parsed.status || prev.status,
+      asset_type: parsed.asset_type || prev.asset_type,
+      hostname: parsed.hostname || prev.hostname || '',
+    }));
+  };
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['hardware_assets'],
