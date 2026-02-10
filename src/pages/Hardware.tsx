@@ -120,6 +120,7 @@ export default function Hardware() {
   const [scannerTarget, setScannerTarget] = useState<'search' | 'newAsset' | 'editAsset'>('search');
   const [bulkScannedTags, setBulkScannedTags] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isIdentifying, setIsIdentifying] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<HardwareAsset | null>(null);
   const { viewMode, setViewMode } = useTableCardView("table");
   const queryClient = useQueryClient();
@@ -127,6 +128,45 @@ export default function Hardware() {
 
   const [newAsset, setNewAsset] = useState(emptyAsset);
   const [editAsset, setEditAsset] = useState(emptyAsset);
+
+  const identifyAssetWithAI = async (scannedText: string) => {
+    try {
+      setIsIdentifying(true);
+      toast.info('🤖 AI identifying asset...');
+      const { data, error } = await supabase.functions.invoke('identify-asset', {
+        body: { scannedText },
+      });
+
+      if (error) throw error;
+      if (data?.result && Object.keys(data.result).length > 0) {
+        return data.result as Record<string, string>;
+      }
+      return null;
+    } catch (err) {
+      console.error('AI identification failed:', err);
+      return null;
+    } finally {
+      setIsIdentifying(false);
+    }
+  };
+
+  const applyParsedData = (
+    setter: React.Dispatch<React.SetStateAction<typeof newAsset>>,
+    parsed: { asset_tag?: string; brand?: string; model?: string; serial_number?: string; mac_address?: string; status?: string; asset_type?: string; hostname?: string },
+    rawText: string
+  ) => {
+    setter((prev) => ({
+      ...prev,
+      asset_tag: parsed.asset_tag || prev.asset_tag || rawText,
+      brand: parsed.brand || prev.brand,
+      model: parsed.model || prev.model,
+      serial_number: parsed.serial_number || prev.serial_number,
+      mac_address: parsed.mac_address || prev.mac_address,
+      status: parsed.status || prev.status,
+      asset_type: parsed.asset_type || prev.asset_type,
+      hostname: parsed.hostname || prev.hostname || '',
+    }));
+  };
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['hardware_assets'],
@@ -603,41 +643,26 @@ export default function Hardware() {
         <BarcodeScanner
           open={isScannerOpen}
           onOpenChange={setIsScannerOpen}
-          onScan={(result) => {
-            if (scannerTarget === 'newAsset') {
-              // Parse barcode data and auto-fill fields
-              const parsed = parseBarcodeData(result);
-              setNewAsset((prev) => ({
-                ...prev,
-                asset_tag: parsed.asset_tag || prev.asset_tag || result,
-                brand: parsed.brand || prev.brand,
-                model: parsed.model || prev.model,
-                serial_number: parsed.serial_number || prev.serial_number,
-                mac_address: parsed.mac_address || prev.mac_address,
-                status: parsed.status || prev.status,
-                asset_type: parsed.asset_type || prev.asset_type,
-                hostname: parsed.hostname || prev.hostname || '',
-              }));
-              toast.success('Barcode parsed - fields auto-filled');
-            } else if (scannerTarget === 'editAsset') {
-              // Parse barcode data and auto-fill fields
-              const parsed = parseBarcodeData(result);
-              setEditAsset((prev) => ({
-                ...prev,
-                asset_tag: parsed.asset_tag || prev.asset_tag || result,
-                brand: parsed.brand || prev.brand,
-                model: parsed.model || prev.model,
-                serial_number: parsed.serial_number || prev.serial_number,
-                mac_address: parsed.mac_address || prev.mac_address,
-                status: parsed.status || prev.status,
-                asset_type: parsed.asset_type || prev.asset_type,
-                hostname: parsed.hostname || prev.hostname || '',
-              }));
-              toast.success('Barcode parsed - fields auto-filled');
+          onScan={async (result) => {
+            if (scannerTarget === 'newAsset' || scannerTarget === 'editAsset') {
+              const setter = scannerTarget === 'newAsset' ? setNewAsset : setEditAsset;
+              // Immediately apply regex-based parsing
+              const regexParsed = parseBarcodeData(result);
+              applyParsedData(setter, regexParsed, result);
+              setIsScannerOpen(false);
+
+              // Then enhance with AI identification
+              const aiResult = await identifyAssetWithAI(result);
+              if (aiResult) {
+                applyParsedData(setter, aiResult, result);
+                toast.success('🤖 AI identified asset details');
+              } else {
+                toast.success('Barcode parsed - fields auto-filled');
+              }
             } else {
               setSearchQuery(result);
+              setIsScannerOpen(false);
             }
-            setIsScannerOpen(false);
           }}
         />
 
