@@ -152,7 +152,7 @@ export default function Hardware() {
 
   const applyParsedData = (
     setter: React.Dispatch<React.SetStateAction<typeof newAsset>>,
-    parsed: Record<string, string | undefined>,
+    parsed: Partial<Record<string, string | undefined>>,
     rawText: string
   ) => {
     setter((prev) => ({
