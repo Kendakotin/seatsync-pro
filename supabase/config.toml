@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.identify-asset]
 verify_jwt = false
+
+[functions.license-sync]
+verify_jwt = false
