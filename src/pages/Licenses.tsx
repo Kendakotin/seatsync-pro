@@ -106,6 +106,38 @@ export default function Licenses() {
     },
   });
 
+  const deleteLicense = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('software_licenses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['software_licenses'] });
+      toast.success('License deleted');
+    },
+    onError: (error) => {
+      toast.error('Failed to delete: ' + error.message);
+    },
+  });
+
+  const syncEntraLicenses = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('license-sync');
+      if (error) throw error;
+      if (data.success) {
+        toast.success(`Synced ${data.licenses_synced} licenses from Entra ID`);
+        queryClient.invalidateQueries({ queryKey: ['software_licenses'] });
+      } else {
+        toast.error(data.error || 'Sync failed');
+      }
+    } catch (error: any) {
+      toast.error('License sync failed: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const filteredLicenses = licenses.filter((license) => {
     const matchesSearch =
       license.software_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
