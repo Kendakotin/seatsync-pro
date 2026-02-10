@@ -914,11 +914,16 @@ export default function Hardware() {
                     : ramFromBytes
                       ? `${formatGb(ramFromBytes)} GB`
                       : (specs?.ram as string) || '-';
-                  const diskType = asset.disk_type || 'SSD';
+                  const diskType = asset.disk_type || (specs?.disk_type as string) || 'SSD';
                   const diskSpace = asset.disk_space_gb;
                   const diskDisplay = specs?.storage as string;
                   const primaryUserDisplay = asset.logged_in_user || asset.assigned_agent || '-';
                   const hostnameDisplay = asset.hostname || (specs?.hostname as string) || '-';
+                  const osName = specs?.os_name as string | undefined;
+                  const osVersion = specs?.os_version as string | undefined;
+                  const osBuild = specs?.os_build as string | undefined;
+                  const osDisplay = osName ? `${osName}${osVersion ? ` ${osVersion}` : ''}` : '-';
+                  const ipAddress = specs?.ip_address as string | undefined;
                   
                   return (
                     <TableRow key={asset.id} className="hover:bg-muted/30 border-border/30">
