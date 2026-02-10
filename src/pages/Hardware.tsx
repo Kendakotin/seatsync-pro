@@ -883,11 +883,12 @@ export default function Hardware() {
                   <TableHead className="table-header">Hostname</TableHead>
                   <TableHead className="table-header hidden sm:table-cell">Type</TableHead>
                   <TableHead className="table-header hidden md:table-cell">Brand/Model</TableHead>
-                  <TableHead className="table-header hidden lg:table-cell">Serial</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">Serial #</TableHead>
                   <TableHead className="table-header hidden xl:table-cell">MAC Address</TableHead>
-                  <TableHead className="table-header hidden lg:table-cell">CPU</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">CPU/Processor</TableHead>
                   <TableHead className="table-header hidden md:table-cell">RAM</TableHead>
                   <TableHead className="table-header hidden lg:table-cell">Disk</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">OS</TableHead>
                   <TableHead className="table-header">Status</TableHead>
                   <TableHead className="table-header hidden xl:table-cell">Primary User</TableHead>
                   <TableHead className="table-header hidden xl:table-cell">Last Login</TableHead>
@@ -913,11 +914,16 @@ export default function Hardware() {
                     : ramFromBytes
                       ? `${formatGb(ramFromBytes)} GB`
                       : (specs?.ram as string) || '-';
-                  const diskType = asset.disk_type || 'SSD';
+                  const diskType = asset.disk_type || (specs?.disk_type as string) || 'SSD';
                   const diskSpace = asset.disk_space_gb;
                   const diskDisplay = specs?.storage as string;
                   const primaryUserDisplay = asset.logged_in_user || asset.assigned_agent || '-';
                   const hostnameDisplay = asset.hostname || (specs?.hostname as string) || '-';
+                  const osName = specs?.os_name as string | undefined;
+                  const osVersion = specs?.os_version as string | undefined;
+                  const osBuild = specs?.os_build as string | undefined;
+                  const osDisplay = osName ? `${osName}${osVersion ? ` ${osVersion}` : ''}` : '-';
+                  const ipAddress = specs?.ip_address as string | undefined;
                   
                   return (
                     <TableRow key={asset.id} className="hover:bg-muted/30 border-border/30">
@@ -961,6 +967,10 @@ export default function Hardware() {
                           : diskDisplay 
                             ? diskDisplay 
                             : '-'}
+                      </TableCell>
+                      <TableCell className="text-xs hidden lg:table-cell max-w-[160px]" title={`${osDisplay}${osBuild ? ` (${osBuild})` : ''}`}>
+                        <div className="truncate">{osDisplay}</div>
+                        {osBuild && <div className="text-muted-foreground truncate text-[10px]">Build: {osBuild}</div>}
                       </TableCell>
                       <TableCell>
                         <span className={`status-badge text-[10px] md:text-xs ${statusColors[asset.status || 'Available'] || 'status-buffer'}`}>
