@@ -316,6 +316,7 @@ export default function Licenses() {
             </DialogContent>
           </Dialog>
           </div>
+        </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
