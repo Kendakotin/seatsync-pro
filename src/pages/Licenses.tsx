@@ -402,75 +402,115 @@ export default function Licenses() {
                 <TableHead className="table-header">Cost/Seat</TableHead>
                 <TableHead className="table-header">Source</TableHead>
                 <TableHead className="table-header">Status</TableHead>
+                <TableHead className="table-header">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Loading licenses...
                   </TableCell>
                 </TableRow>
               ) : filteredLicenses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    No licenses found. Add your first license to get started.
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    No licenses found. Click "Sync Entra ID" to import licenses or add manually.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredLicenses.map((license) => (
-                  <TableRow key={license.id} className="hover:bg-muted/30 border-border/30">
-                    <TableCell className="font-medium">{license.software_name}</TableCell>
-                    <TableCell className="text-muted-foreground">{license.vendor || '-'}</TableCell>
-                    <TableCell>
-                      <span className="status-badge status-buffer">{license.license_type}</span>
-                    </TableCell>
-                    <TableCell className="min-w-[150px]">
-                      <div className="space-y-1">
-                        <div className="text-xs text-muted-foreground">
-                          {license.used_seats} / {license.total_seats} seats
+                filteredLicenses.map((license) => {
+                  const isEntraLicense = !!license.license_key && license.vendor === 'Microsoft';
+                  return (
+                    <TableRow key={license.id} className="hover:bg-muted/30 border-border/30">
+                      <TableCell>
+                        <div>
+                          <span className="font-medium">{license.software_name}</span>
+                          {isEntraLicense && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Cloud className="w-3 h-3 text-primary" />
+                              <span className="text-[10px] text-primary">Entra ID</span>
+                            </div>
+                          )}
                         </div>
-                        <Progress
-                          value={getUsagePercentage(license.used_seats, license.total_seats)}
-                          className="h-1.5"
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {license.expiry_date ? (
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{license.vendor || '-'}</TableCell>
+                      <TableCell>
+                        <span className="status-badge status-buffer">{license.license_type}</span>
+                      </TableCell>
+                      <TableCell className="min-w-[150px]">
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">
+                            {license.used_seats} / {license.total_seats} seats
+                          </div>
+                          <Progress
+                            value={getUsagePercentage(license.used_seats, license.total_seats)}
+                            className="h-1.5"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {license.expiry_date ? (
+                          <span
+                            className={`text-sm ${
+                              isExpired(license.expiry_date)
+                                ? 'text-destructive'
+                                : isExpiringSoon(license.expiry_date)
+                                ? 'text-warning'
+                                : 'text-muted-foreground'
+                            }`}
+                          >
+                            {format(new Date(license.expiry_date), 'MMM dd, yyyy')}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>${license.cost_per_seat?.toFixed(2) || '0.00'}</TableCell>
+                      <TableCell>
                         <span
-                          className={`text-sm ${
-                            isExpired(license.expiry_date)
-                              ? 'text-destructive'
-                              : isExpiringSoon(license.expiry_date)
-                              ? 'text-warning'
-                              : 'text-muted-foreground'
+                          className={`status-badge ${
+                            isEntraLicense ? 'status-active' : license.is_client_provided ? 'status-reserved' : 'status-buffer'
                           }`}
                         >
-                          {format(new Date(license.expiry_date), 'MMM dd, yyyy')}
+                          {isEntraLicense ? 'Entra ID' : license.is_client_provided ? 'Client' : 'Company'}
                         </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>${license.cost_per_seat?.toFixed(2) || '0.00'}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`status-badge ${
-                          license.is_client_provided ? 'status-reserved' : 'status-buffer'
-                        }`}
-                      >
-                        {license.is_client_provided ? 'Client' : 'Company'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getComplianceIcon(license.compliance_status)}
-                        <span className="text-sm">{license.compliance_status}</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getComplianceIcon(license.compliance_status)}
+                          <span className="text-sm">{license.compliance_status}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {license.notes && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title={license.notes}
+                            >
+                              <Info className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this license?')) {
+                                deleteLicense.mutate(license.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
