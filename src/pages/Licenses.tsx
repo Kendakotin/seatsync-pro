@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, FileCheck, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Search, FileCheck, AlertTriangle, CheckCircle, XCircle, Cloud, Loader2, Edit, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
