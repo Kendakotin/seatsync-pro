@@ -968,6 +968,10 @@ export default function Hardware() {
                             ? diskDisplay 
                             : '-'}
                       </TableCell>
+                      <TableCell className="text-xs hidden lg:table-cell max-w-[160px]" title={`${osDisplay}${osBuild ? ` (${osBuild})` : ''}`}>
+                        <div className="truncate">{osDisplay}</div>
+                        {osBuild && <div className="text-muted-foreground truncate text-[10px]">Build: {osBuild}</div>}
+                      </TableCell>
                       <TableCell>
                         <span className={`status-badge text-[10px] md:text-xs ${statusColors[asset.status || 'Available'] || 'status-buffer'}`}>
                           {asset.status}
