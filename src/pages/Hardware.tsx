@@ -883,11 +883,12 @@ export default function Hardware() {
                   <TableHead className="table-header">Hostname</TableHead>
                   <TableHead className="table-header hidden sm:table-cell">Type</TableHead>
                   <TableHead className="table-header hidden md:table-cell">Brand/Model</TableHead>
-                  <TableHead className="table-header hidden lg:table-cell">Serial</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">Serial #</TableHead>
                   <TableHead className="table-header hidden xl:table-cell">MAC Address</TableHead>
-                  <TableHead className="table-header hidden lg:table-cell">CPU</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">CPU/Processor</TableHead>
                   <TableHead className="table-header hidden md:table-cell">RAM</TableHead>
                   <TableHead className="table-header hidden lg:table-cell">Disk</TableHead>
+                  <TableHead className="table-header hidden lg:table-cell">OS</TableHead>
                   <TableHead className="table-header">Status</TableHead>
                   <TableHead className="table-header hidden xl:table-cell">Primary User</TableHead>
                   <TableHead className="table-header hidden xl:table-cell">Last Login</TableHead>
