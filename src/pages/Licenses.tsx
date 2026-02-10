@@ -205,7 +205,7 @@ export default function Licenses() {
                   Add License
                 </Button>
               </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Add New License</DialogTitle>
               </DialogHeader>
