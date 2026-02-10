@@ -52,6 +52,7 @@ export default function Licenses() {
   const [searchQuery, setSearchQuery] = useState('');
   const [complianceFilter, setComplianceFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const queryClient = useQueryClient();
 
   const [newLicense, setNewLicense] = useState({
