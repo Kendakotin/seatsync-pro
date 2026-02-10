@@ -37,12 +37,14 @@ type SoftwareLicense = {
   software_name: string;
   vendor: string | null;
   license_type: string | null;
+  license_key: string | null;
   total_seats: number | null;
   used_seats: number | null;
   expiry_date: string | null;
   cost_per_seat: number | null;
   is_client_provided: boolean | null;
   compliance_status: string | null;
+  notes: string | null;
   created_at: string;
 };
 
