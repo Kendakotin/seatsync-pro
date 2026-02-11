@@ -30,6 +30,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Plus, Search, UserPlus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { format } from 'date-fns';
 
 type NewHire = {

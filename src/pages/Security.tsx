@@ -30,6 +30,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Plus, Search, Shield, AlertTriangle, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { format } from 'date-fns';
 
 type SecurityIncident = {

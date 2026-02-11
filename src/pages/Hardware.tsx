@@ -42,6 +42,7 @@ import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, Ref
 import { TableCardToggle, DataCard, DataCardField, DataCardHeader, useTableCardView, ViewMode } from '@/components/ui/table-card-toggle';
 import { BarcodeScanner } from '@/components/scanner/BarcodeScanner';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { useNavigate } from 'react-router-dom';
 
 type HardwareAsset = {

@@ -30,6 +30,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Plus, Search, FileCheck, AlertTriangle, CheckCircle, XCircle, Cloud, Loader2, Edit, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { format } from 'date-fns';
 
 type SoftwareLicense = {
