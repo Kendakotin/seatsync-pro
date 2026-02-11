@@ -195,7 +195,7 @@ export default function Hardware() {
       toast.success('Hardware asset added successfully');
     },
     onError: (error) => {
-      toast.error('Failed to add asset: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Adding asset'));
     },
   });
 
