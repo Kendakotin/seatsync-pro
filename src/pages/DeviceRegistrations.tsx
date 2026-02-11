@@ -141,7 +141,7 @@ const DeviceRegistrations = () => {
       toast.success("Device status updated");
     },
     onError: (error) => {
-      toast.error("Failed to update device: " + error.message);
+      toast.error(getSafeErrorMessage(error, 'Updating device'));
     },
   });
 

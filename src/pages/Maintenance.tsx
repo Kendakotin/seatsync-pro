@@ -94,7 +94,7 @@ export default function Maintenance() {
       toast.success('Maintenance record created');
     },
     onError: (error) => {
-      toast.error('Failed to create record: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Creating record'));
     },
   });
 

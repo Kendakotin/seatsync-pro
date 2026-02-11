@@ -249,7 +249,7 @@ export default function Hardware() {
         toast.error(data.error || 'Sync failed');
       }
     } catch (error: any) {
-      toast.error('Intune sync failed: ' + (error.message || 'Unknown error'));
+      toast.error(getSafeErrorMessage(error, 'Intune sync'));
     } finally {
       setIsSyncing(false);
     }

@@ -91,7 +91,7 @@ export default function Security() {
       toast.success('Security incident reported');
     },
     onError: (error) => {
-      toast.error('Failed to report incident: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Reporting incident'));
     },
   });
 

@@ -112,7 +112,7 @@ export default function NewHires() {
       toast.success('New hire added successfully');
     },
     onError: (error) => {
-      toast.error('Failed to add new hire: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Adding new hire'));
     },
   });
 

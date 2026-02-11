@@ -132,7 +132,7 @@ export default function Licenses() {
         toast.error(data.error || 'Sync failed');
       }
     } catch (error: any) {
-      toast.error('License sync failed: ' + (error.message || 'Unknown error'));
+      toast.error(getSafeErrorMessage(error, 'License sync'));
     } finally {
       setIsSyncing(false);
     }

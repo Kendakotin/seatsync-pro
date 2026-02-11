@@ -90,7 +90,7 @@ export default function Accounts() {
       toast.success('Account added successfully');
     },
     onError: (error) => {
-      toast.error('Failed to add account: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Adding account'));
     },
   });
 

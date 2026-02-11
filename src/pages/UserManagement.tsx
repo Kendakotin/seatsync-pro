@@ -73,7 +73,7 @@ export default function UserManagement() {
       toast.success('User role updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update role: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Updating role'));
     },
   });
 
