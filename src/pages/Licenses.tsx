@@ -116,7 +116,7 @@ export default function Licenses() {
       toast.success('License deleted');
     },
     onError: (error) => {
-      toast.error('Failed to delete: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Deleting license'));
     },
   });
 
