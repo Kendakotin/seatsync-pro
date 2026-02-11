@@ -217,7 +217,7 @@ export default function Hardware() {
       toast.success('Asset updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update asset: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Updating asset'));
     },
   });
 
