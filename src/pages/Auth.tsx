@@ -11,7 +11,12 @@ import { Loader2, Monitor, Shield } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email address');
-const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
+const passwordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[a-z]/, 'Must contain a lowercase letter')
+  .regex(/[A-Z]/, 'Must contain an uppercase letter')
+  .regex(/[0-9]/, 'Must contain a number')
+  .regex(/[^a-zA-Z0-9]/, 'Must contain a special character');
 
 export default function Auth() {
   const [email, setEmail] = useState('');
