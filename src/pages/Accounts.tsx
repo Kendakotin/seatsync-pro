@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Building2, Users, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { format } from 'date-fns';
 
 type Account = {
@@ -90,7 +91,7 @@ export default function Accounts() {
       toast.success('Account added successfully');
     },
     onError: (error) => {
-      toast.error('Failed to add account: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Adding account'));
     },
   });
 

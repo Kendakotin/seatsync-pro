@@ -30,6 +30,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Plus, Search, FileCheck, AlertTriangle, CheckCircle, XCircle, Cloud, Loader2, Edit, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { format } from 'date-fns';
 
 type SoftwareLicense = {
@@ -102,7 +103,7 @@ export default function Licenses() {
       toast.success('License added successfully');
     },
     onError: (error) => {
-      toast.error('Failed to add license: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Adding license'));
     },
   });
 
@@ -116,7 +117,7 @@ export default function Licenses() {
       toast.success('License deleted');
     },
     onError: (error) => {
-      toast.error('Failed to delete: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Deleting license'));
     },
   });
 
@@ -132,7 +133,7 @@ export default function Licenses() {
         toast.error(data.error || 'Sync failed');
       }
     } catch (error: any) {
-      toast.error('License sync failed: ' + (error.message || 'Unknown error'));
+      toast.error(getSafeErrorMessage(error, 'License sync'));
     } finally {
       setIsSyncing(false);
     }

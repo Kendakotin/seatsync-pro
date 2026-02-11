@@ -42,6 +42,7 @@ import { Plus, Search, HardDrive, Monitor, Headphones, Filter, Edit, Trash2, Ref
 import { TableCardToggle, DataCard, DataCardField, DataCardHeader, useTableCardView, ViewMode } from '@/components/ui/table-card-toggle';
 import { BarcodeScanner } from '@/components/scanner/BarcodeScanner';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { useNavigate } from 'react-router-dom';
 
 type HardwareAsset = {
@@ -195,7 +196,7 @@ export default function Hardware() {
       toast.success('Hardware asset added successfully');
     },
     onError: (error) => {
-      toast.error('Failed to add asset: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Adding asset'));
     },
   });
 
@@ -217,7 +218,7 @@ export default function Hardware() {
       toast.success('Asset updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update asset: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Updating asset'));
     },
   });
 
@@ -231,7 +232,7 @@ export default function Hardware() {
       toast.success('Asset deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete asset: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Deleting asset'));
     },
   });
 
@@ -249,7 +250,7 @@ export default function Hardware() {
         toast.error(data.error || 'Sync failed');
       }
     } catch (error: any) {
-      toast.error('Intune sync failed: ' + (error.message || 'Unknown error'));
+      toast.error(getSafeErrorMessage(error, 'Intune sync'));
     } finally {
       setIsSyncing(false);
     }

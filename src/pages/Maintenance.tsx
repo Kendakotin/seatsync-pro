@@ -30,6 +30,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Plus, Search, Wrench, Clock, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { format, formatDistanceToNow } from 'date-fns';
 
 type MaintenanceRecord = {
@@ -94,7 +95,7 @@ export default function Maintenance() {
       toast.success('Maintenance record created');
     },
     onError: (error) => {
-      toast.error('Failed to create record: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Creating record'));
     },
   });
 

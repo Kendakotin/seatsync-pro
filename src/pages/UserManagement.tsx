@@ -9,6 +9,7 @@ import { Loader2, Search, Users, Shield, UserCog } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getSafeErrorMessage } from '@/lib/errorHandler';
 
 type AppRole = 'admin' | 'operator' | 'viewer';
 
@@ -73,7 +74,7 @@ export default function UserManagement() {
       toast.success('User role updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update role: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Updating role'));
     },
   });
 
