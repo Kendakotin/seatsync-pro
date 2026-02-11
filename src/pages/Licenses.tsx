@@ -102,7 +102,7 @@ export default function Licenses() {
       toast.success('License added successfully');
     },
     onError: (error) => {
-      toast.error('Failed to add license: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Adding license'));
     },
   });
 
