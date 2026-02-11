@@ -231,7 +231,7 @@ export default function Hardware() {
       toast.success('Asset deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete asset: ' + error.message);
+      toast.error(getSafeErrorMessage(error, 'Deleting asset'));
     },
   });
 
