@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, UserPlus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Search, UserPlus, CheckCircle, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSafeErrorMessage } from '@/lib/errorHandler';
 import { format } from 'date-fns';
@@ -58,6 +58,7 @@ export default function NewHires() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const queryClient = useQueryClient();
 
   const [newHire, setNewHire] = useState({
@@ -130,6 +131,28 @@ export default function NewHires() {
     },
   });
 
+  const handleEntraSync = async () => {
+    setIsSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in to sync.');
+        return;
+      }
+      const response = await supabase.functions.invoke('new-hire-sync', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (response.error) throw response.error;
+      const result = response.data;
+      toast.success(`Sync complete: ${result.created} new, ${result.updated} updated, ${result.skipped} skipped`);
+      queryClient.invalidateQueries({ queryKey: ['new_hires'] });
+    } catch (error) {
+      toast.error(getSafeErrorMessage(error, 'Entra ID sync'));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const filteredHires = newHires.filter((hire) => {
     const matchesSearch =
       hire.employee_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -161,12 +184,18 @@ export default function NewHires() {
             </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Add New Hire
+            <div className="flex gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleEntraSync} disabled={isSyncing}>
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Syncing...' : 'Sync Entra ID'}
               </Button>
-            </DialogTrigger>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add New Hire
+                </Button>
+              </DialogTrigger>
+            </div>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Add New Hire</DialogTitle>

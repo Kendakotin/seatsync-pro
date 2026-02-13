@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.license-sync]
 verify_jwt = false
+
+[functions.new-hire-sync]
+verify_jwt = false
