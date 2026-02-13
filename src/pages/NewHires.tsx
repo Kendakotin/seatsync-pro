@@ -27,11 +27,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, UserPlus, CheckCircle, Clock, AlertCircle, RefreshCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Plus, Search, UserPlus, CheckCircle, Clock, AlertCircle, RefreshCw, CalendarIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSafeErrorMessage } from '@/lib/errorHandler';
-import { format } from 'date-fns';
+import { format, subDays, isAfter, isBefore, startOfDay } from 'date-fns';
 
 type NewHire = {
   id: string;
@@ -59,6 +66,9 @@ export default function NewHires() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [datePreset, setDatePreset] = useState<string>('all');
+  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>();
+  const [customDateTo, setCustomDateTo] = useState<Date | undefined>();
   const queryClient = useQueryClient();
 
   const [newHire, setNewHire] = useState({
@@ -153,12 +163,26 @@ export default function NewHires() {
     }
   };
 
+  const getDateRange = (): { from: Date | null; to: Date | null } => {
+    if (datePreset === 'all') return { from: null, to: null };
+    if (datePreset === 'custom') return { from: customDateFrom || null, to: customDateTo || null };
+    const days = parseInt(datePreset);
+    return { from: startOfDay(subDays(new Date(), days)), to: null };
+  };
+
   const filteredHires = newHires.filter((hire) => {
     const matchesSearch =
       hire.employee_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       hire.employee_id?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || hire.status === statusFilter;
-    return matchesSearch && matchesStatus;
+
+    const { from, to } = getDateRange();
+    const hireDate = startOfDay(new Date(hire.hire_date));
+    const matchesDate =
+      (!from || !isBefore(hireDate, from)) &&
+      (!to || !isAfter(hireDate, startOfDay(to)));
+
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const getReadinessStatus = (hire: NewHire) => {
@@ -336,6 +360,50 @@ export default function NewHires() {
               <SelectItem value="Ready">Ready</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={datePreset} onValueChange={(v) => { setDatePreset(v); if (v !== 'custom') { setCustomDateFrom(undefined); setCustomDateTo(undefined); } }}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Date range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Dates</SelectItem>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="14">Last 14 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+          </Select>
+          {datePreset === 'custom' && (
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[130px] justify-start text-left text-sm font-normal", !customDateFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                    {customDateFrom ? format(customDateFrom, 'MMM dd') : 'From'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customDateFrom} onSelect={setCustomDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+              <span className="text-muted-foreground text-sm">–</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[130px] justify-start text-left text-sm font-normal", !customDateTo && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                    {customDateTo ? format(customDateTo, 'MMM dd') : 'To'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customDateTo} onSelect={setCustomDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+              {(customDateFrom || customDateTo) && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCustomDateFrom(undefined); setCustomDateTo(undefined); }}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* New Hires Table */}
