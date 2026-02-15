@@ -153,6 +153,54 @@ async function authenticateRequest(req: Request): Promise<{ userId: string; user
   return { userId, userEmail };
 }
 
+interface Account {
+  id: string;
+  client_name: string;
+  program_name: string;
+}
+
+interface Seat {
+  id: string;
+  seat_id: string;
+  account_id: string;
+  status: string;
+  assigned_agent: string | null;
+}
+
+/** Match a department string to an account by fuzzy-matching client_name or program_name */
+function matchDepartmentToAccount(department: string | null, accounts: Account[]): Account | null {
+  if (!department) return null;
+  const deptLower = department.toLowerCase().trim();
+  
+  for (const account of accounts) {
+    const clientLower = account.client_name.toLowerCase();
+    const programLower = account.program_name.toLowerCase();
+    
+    // Exact or substring match on client_name or program_name
+    if (
+      deptLower.includes(clientLower) || clientLower.includes(deptLower) ||
+      deptLower.includes(programLower) || programLower.includes(deptLower)
+    ) {
+      return account;
+    }
+  }
+  return null;
+}
+
+/** Find an available seat (Buffer status or no assigned agent) for the given account */
+function findAvailableSeat(accountId: string, availableSeats: Seat[]): Seat | null {
+  // Prefer Buffer seats first, then unoccupied seats
+  const bufferSeat = availableSeats.find(
+    s => s.account_id === accountId && s.status === 'Buffer'
+  );
+  if (bufferSeat) return bufferSeat;
+
+  const unoccupiedSeat = availableSeats.find(
+    s => s.account_id === accountId && !s.assigned_agent
+  );
+  return unoccupiedSeat || null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -181,12 +229,26 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const accessToken = await getAccessToken();
-    const users = await fetchRecentUsers(accessToken, 30);
+
+    // Fetch accounts and available seats in parallel with users
+    const [users, accountsResult, seatsResult] = await Promise.all([
+      fetchRecentUsers(accessToken, 30),
+      supabase.from('accounts').select('id, client_name, program_name'),
+      supabase.from('seats').select('id, seat_id, account_id, status, assigned_agent')
+        .or('status.eq.Buffer,assigned_agent.is.null'),
+    ]);
+
+    const accounts: Account[] = accountsResult.data || [];
+    // Mutable list — seats get removed as they're assigned
+    const availableSeats: Seat[] = (seatsResult.data || []) as Seat[];
+
+    console.log(`Loaded ${accounts.length} accounts and ${availableSeats.length} available seats for auto-assignment`);
 
     let created = 0;
     let updated = 0;
     let skipped = 0;
     let errors = 0;
+    let seatsAssigned = 0;
 
     for (const user of users) {
       try {
@@ -203,7 +265,6 @@ serve(async (req) => {
         }
 
         const upn = sanitizeText(user.userPrincipalName, 255);
-        // Skip accounts that look like service principals (contain #EXT# or are guest accounts)
         if (upn && upn.includes('#EXT#')) {
           skipped++;
           continue;
@@ -211,26 +272,54 @@ serve(async (req) => {
 
         const employeeId = sanitizeText(user.employeeId, 100) || sanitizeText(user.userPrincipalName, 100);
         const hireDate = user.createdDateTime ? user.createdDateTime.split('T')[0] : new Date().toISOString().split('T')[0];
+        const department = sanitizeText(user.department, 100);
+
+        // Match department to account
+        const matchedAccount = matchDepartmentToAccount(department, accounts);
 
         // Check if this user already exists by employee_id
         const { data: existing } = await supabase
           .from('new_hires')
-          .select('id')
+          .select('id, account_id, assigned_seat_id')
           .eq('employee_id', employeeId)
           .maybeSingle();
 
         const notes = [
-          user.department ? `Department: ${sanitizeText(user.department, 100)}` : null,
+          department ? `Department: ${department}` : null,
           user.jobTitle ? `Job Title: ${sanitizeText(user.jobTitle, 100)}` : null,
           upn ? `UPN: ${upn}` : null,
           `Entra ID: ${user.id}`,
+          matchedAccount ? `Auto-matched to: ${matchedAccount.client_name} - ${matchedAccount.program_name}` : null,
         ].filter(Boolean).join('\n');
 
         if (existing) {
-          // Update existing record
+          // Update existing record — only set account if not already assigned
+          const updateData: Record<string, unknown> = { employee_name: employeeName, notes };
+          if (!existing.account_id && matchedAccount) {
+            updateData.account_id = matchedAccount.id;
+          }
+
+          // Auto-assign seat if not already assigned and account is known
+          const effectiveAccountId = existing.account_id || matchedAccount?.id;
+          if (!existing.assigned_seat_id && effectiveAccountId) {
+            const seat = findAvailableSeat(effectiveAccountId, availableSeats);
+            if (seat) {
+              updateData.assigned_seat_id = seat.id;
+              // Remove seat from available pool
+              const idx = availableSeats.indexOf(seat);
+              if (idx !== -1) availableSeats.splice(idx, 1);
+              // Update seat with assigned agent
+              await supabase.from('seats').update({
+                assigned_agent: employeeName,
+                status: 'Active',
+              }).eq('id', seat.id);
+              seatsAssigned++;
+            }
+          }
+
           const { error } = await supabase
             .from('new_hires')
-            .update({ employee_name: employeeName, notes })
+            .update(updateData)
             .eq('id', existing.id);
 
           if (error) {
@@ -241,15 +330,36 @@ serve(async (req) => {
           }
         } else {
           // Insert new record
+          const insertData: Record<string, unknown> = {
+            employee_name: employeeName,
+            employee_id: employeeId,
+            hire_date: hireDate,
+            status: 'Pending',
+            notes,
+          };
+
+          if (matchedAccount) {
+            insertData.account_id = matchedAccount.id;
+          }
+
+          // Auto-assign seat if account was matched
+          if (matchedAccount) {
+            const seat = findAvailableSeat(matchedAccount.id, availableSeats);
+            if (seat) {
+              insertData.assigned_seat_id = seat.id;
+              const idx = availableSeats.indexOf(seat);
+              if (idx !== -1) availableSeats.splice(idx, 1);
+              await supabase.from('seats').update({
+                assigned_agent: employeeName,
+                status: 'Active',
+              }).eq('id', seat.id);
+              seatsAssigned++;
+            }
+          }
+
           const { error } = await supabase
             .from('new_hires')
-            .insert({
-              employee_name: employeeName,
-              employee_id: employeeId,
-              hire_date: hireDate,
-              status: 'Pending',
-              notes,
-            });
+            .insert(insertData);
 
           if (error) {
             console.error(`Error inserting hire ${employeeName}:`, error);
@@ -275,12 +385,13 @@ serve(async (req) => {
         updated,
         skipped,
         errors,
+        seats_assigned: seatsAssigned,
         timestamp: new Date().toISOString(),
         initiated_by_user_id: userId,
       },
     });
 
-    console.log(`New hire sync complete: ${created} created, ${updated} updated, ${skipped} skipped, ${errors} errors`);
+    console.log(`New hire sync complete: ${created} created, ${updated} updated, ${skipped} skipped, ${errors} errors, ${seatsAssigned} seats assigned`);
 
     return new Response(
       JSON.stringify({
@@ -291,6 +402,7 @@ serve(async (req) => {
         updated,
         skipped,
         errors,
+        seats_assigned: seatsAssigned,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

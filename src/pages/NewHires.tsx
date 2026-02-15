@@ -154,8 +154,10 @@ export default function NewHires() {
       });
       if (response.error) throw response.error;
       const result = response.data;
-      toast.success(`Sync complete: ${result.created} new, ${result.updated} updated, ${result.skipped} skipped`);
+      const seatMsg = result.seats_assigned ? `, ${result.seats_assigned} seats assigned` : '';
+      toast.success(`Sync complete: ${result.created} new, ${result.updated} updated, ${result.skipped} skipped${seatMsg}`);
       queryClient.invalidateQueries({ queryKey: ['new_hires'] });
+      queryClient.invalidateQueries({ queryKey: ['seats'] });
     } catch (error) {
       toast.error(getSafeErrorMessage(error, 'Entra ID sync'));
     } finally {
