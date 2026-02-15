@@ -68,7 +68,7 @@ async function fetchRecentUsers(accessToken: string, days: number): Promise<Grap
 
   const filter = `createdDateTime ge ${sinceIso}`;
   const select = 'id,displayName,employeeId,createdDateTime,userPrincipalName,department,jobTitle,accountEnabled';
-  let url = `https://graph.microsoft.com/v1.0/users?$filter=${encodeURIComponent(filter)}&$select=${select}&$orderby=createdDateTime desc&$top=999`;
+  let url = `https://graph.microsoft.com/v1.0/users?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=999`;
 
   const users: GraphUser[] = [];
 
