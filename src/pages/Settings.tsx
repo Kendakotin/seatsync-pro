@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SyncSchedulesTab } from '@/components/settings/SyncSchedulesTab';
+import { DepartmentMappingsTab } from '@/components/settings/DepartmentMappingsTab';
 import {
   Settings as SettingsIcon,
   Building2,
@@ -19,6 +20,7 @@ import {
   Users,
   Save,
   RefreshCw,
+  GitBranch,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -88,6 +90,10 @@ export default function Settings() {
             <TabsTrigger value="sync" className="gap-2">
               <RefreshCw className="w-4 h-4" />
               Sync Schedules
+            </TabsTrigger>
+            <TabsTrigger value="dept-mappings" className="gap-2">
+              <GitBranch className="w-4 h-4" />
+              Dept Mappings
             </TabsTrigger>
           </TabsList>
 
@@ -396,6 +402,10 @@ export default function Settings() {
 
           <TabsContent value="sync">
             <SyncSchedulesTab />
+          </TabsContent>
+
+          <TabsContent value="dept-mappings">
+            <DepartmentMappingsTab />
           </TabsContent>
         </Tabs>
       </div>

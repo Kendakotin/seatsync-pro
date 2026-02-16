@@ -104,6 +104,38 @@ export type Database = {
         }
         Relationships: []
       }
+      department_account_mappings: {
+        Row: {
+          account_id: string
+          created_at: string
+          department_pattern: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          department_pattern: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          department_pattern?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_account_mappings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hardware_assets: {
         Row: {
           antivirus_status: string | null

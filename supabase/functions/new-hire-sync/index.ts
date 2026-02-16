@@ -167,16 +167,33 @@ interface Seat {
   assigned_agent: string | null;
 }
 
-/** Match a department string to an account by fuzzy-matching client_name or program_name */
-function matchDepartmentToAccount(department: string | null, accounts: Account[]): Account | null {
+interface DepartmentMapping {
+  department_pattern: string;
+  account_id: string;
+}
+
+/** Match a department string to an account using configured mappings first, then fuzzy match */
+function matchDepartmentToAccount(
+  department: string | null,
+  accounts: Account[],
+  mappings: DepartmentMapping[]
+): Account | null {
   if (!department) return null;
   const deptLower = department.toLowerCase().trim();
-  
+
+  // 1. Check configured mappings first (case-insensitive substring)
+  for (const mapping of mappings) {
+    const patternLower = mapping.department_pattern.toLowerCase().trim();
+    if (deptLower.includes(patternLower) || patternLower.includes(deptLower)) {
+      const account = accounts.find(a => a.id === mapping.account_id);
+      if (account) return account;
+    }
+  }
+
+  // 2. Fall back to fuzzy match on client_name / program_name
   for (const account of accounts) {
     const clientLower = account.client_name.toLowerCase();
     const programLower = account.program_name.toLowerCase();
-    
-    // Exact or substring match on client_name or program_name
     if (
       deptLower.includes(clientLower) || clientLower.includes(deptLower) ||
       deptLower.includes(programLower) || programLower.includes(deptLower)
@@ -231,18 +248,19 @@ serve(async (req) => {
     const accessToken = await getAccessToken();
 
     // Fetch accounts and available seats in parallel with users
-    const [users, accountsResult, seatsResult] = await Promise.all([
+    const [users, accountsResult, seatsResult, mappingsResult] = await Promise.all([
       fetchRecentUsers(accessToken, 30),
       supabase.from('accounts').select('id, client_name, program_name'),
       supabase.from('seats').select('id, seat_id, account_id, status, assigned_agent')
         .or('status.eq.Buffer,assigned_agent.is.null'),
+      supabase.from('department_account_mappings').select('department_pattern, account_id'),
     ]);
 
     const accounts: Account[] = accountsResult.data || [];
-    // Mutable list — seats get removed as they're assigned
     const availableSeats: Seat[] = (seatsResult.data || []) as Seat[];
+    const mappings: DepartmentMapping[] = (mappingsResult.data || []) as DepartmentMapping[];
 
-    console.log(`Loaded ${accounts.length} accounts and ${availableSeats.length} available seats for auto-assignment`);
+    console.log(`Loaded ${accounts.length} accounts, ${availableSeats.length} available seats, ${mappings.length} department mappings`);
 
     let created = 0;
     let updated = 0;
@@ -274,8 +292,8 @@ serve(async (req) => {
         const hireDate = user.createdDateTime ? user.createdDateTime.split('T')[0] : new Date().toISOString().split('T')[0];
         const department = sanitizeText(user.department, 100);
 
-        // Match department to account
-        const matchedAccount = matchDepartmentToAccount(department, accounts);
+        // Match department to account using configured mappings + fuzzy fallback
+        const matchedAccount = matchDepartmentToAccount(department, accounts, mappings);
 
         // Check if this user already exists by employee_id
         const { data: existing } = await supabase
