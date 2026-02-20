@@ -46,6 +46,7 @@ type NewHire = {
   employee_id: string | null;
   hire_date: string;
   account_id: string | null;
+  assigned_seat_id: string | null;
   pc_imaged: boolean | null;
   software_installed: boolean | null;
   headset_issued: boolean | null;
@@ -53,6 +54,7 @@ type NewHire = {
   status: string | null;
   notes: string | null;
   created_at: string;
+  seats?: { seat_id: string } | null;
 };
 
 type Account = {
@@ -84,7 +86,7 @@ export default function NewHires() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('new_hires')
-        .select('*')
+        .select('*, seats(seat_id)')
         .order('hire_date', { ascending: true });
       if (error) throw error;
       return data as NewHire[];
@@ -415,6 +417,7 @@ export default function NewHires() {
               <TableRow className="hover:bg-transparent border-border/50">
                 <TableHead className="table-header">Employee</TableHead>
                 <TableHead className="table-header">Hire Date</TableHead>
+                <TableHead className="table-header">Assigned Seat</TableHead>
                 <TableHead className="table-header text-center">PC Imaged</TableHead>
                 <TableHead className="table-header text-center">Software</TableHead>
                 <TableHead className="table-header text-center">Headset</TableHead>
@@ -425,13 +428,13 @@ export default function NewHires() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Loading new hires...
                   </TableCell>
                 </TableRow>
               ) : filteredHires.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No new hires found. Add your first new hire to get started.
                   </TableCell>
                 </TableRow>
@@ -448,6 +451,13 @@ export default function NewHires() {
                         </div>
                       </TableCell>
                       <TableCell>{format(new Date(hire.hire_date), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell>
+                        {hire.seats?.seat_id ? (
+                          <span className="text-sm font-medium">{hire.seats.seat_id}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">
                         <Checkbox
                           checked={hire.pc_imaged || false}
